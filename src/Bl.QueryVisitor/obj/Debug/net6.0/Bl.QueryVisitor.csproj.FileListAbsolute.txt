@@ -1,0 +1,11 @@
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\bin\Debug\net6.0\Bl.QueryVisitor.deps.json
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\bin\Debug\net6.0\Bl.QueryVisitor.dll
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\bin\Debug\net6.0\Bl.QueryVisitor.pdb
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\Bl.QueryVisitor.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\Bl.QueryVisitor.AssemblyInfoInputs.cache
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\Bl.QueryVisitor.AssemblyInfo.cs
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\Bl.QueryVisitor.csproj.CoreCompileInputs.cache
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\Bl.QueryVisitor.dll
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\refint\Bl.QueryVisitor.dll
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\Bl.QueryVisitor.pdb
+C:\Users\guilh\source\repos\Bl.QueryVisitor\src\Bl.QueryVisitor\obj\Debug\net6.0\ref\Bl.QueryVisitor.dll
