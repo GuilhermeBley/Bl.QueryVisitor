@@ -22,4 +22,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bl.QueryVisitor\Bl.QueryVisitor.csproj" />
+  </ItemGroup>
+
 </Project>
