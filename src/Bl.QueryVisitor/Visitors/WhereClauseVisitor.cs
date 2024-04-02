@@ -10,11 +10,11 @@ public class WhereClauseVisitor : ExpressionVisitor
     private IEnumerable<WhereClause> _clauseInfos
         = Enumerable.Empty<WhereClause>();
 
-    public IEnumerable<WhereClause> GetWhereClauses(Expression expression)
+    public IReadOnlyList<WhereClause> GetWhereClauses(Expression expression)
     {
         Visit(expression);
 
-        return _clauseInfos;
+        return _clauseInfos.ToImmutableArray();
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -98,12 +98,24 @@ public class WhereClauseVisitor : ExpressionVisitor
 
                 InternalClauseInfo clause;
 
-                switch (nextNode.NodeType)
+                switch (binaryExp.NodeType)
                 {
                     case ExpressionType.AndAlso:
                         clause = ExtractClauseInfo(binaryExp);
                         clause.IsNextAndOperator = true;
                         _whereClauses.Add(clause);
+                        break;
+                    case ExpressionType.OrElse:
+
+                        var left = binaryExp.Left as BinaryExpression;
+                        var right = binaryExp.Right as BinaryExpression;
+
+                        if (left is null ||
+                            right is null)
+                            throw new ArgumentException("It's only supported one layer of comparison.");
+
+                        _whereClauses.Add(ExtractClauseInfo(left));
+                        _whereClauses.Add(ExtractClauseInfo(right));
                         break;
                     default:
                         clause = ExtractClauseInfo(binaryExp);
@@ -122,10 +134,10 @@ public class WhereClauseVisitor : ExpressionVisitor
         {
             var propertyName = node.Left.ToString();
             var constant = node.Right as ConstantExpression;
-            var value = constant?.Value;
+            var value = constant?.Value ?? node.Right as MemberExpression;
 
-            if (constant is null)
-                throw new ArgumentException();
+            if (value is null)
+                throw new ArgumentException("Value can't be collected.");
 
             var comparer = node.NodeType.ToString();
 
