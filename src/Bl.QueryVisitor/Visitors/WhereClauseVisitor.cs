@@ -28,6 +28,10 @@ public class WhereClauseVisitor : ExpressionVisitor
 
         return base.VisitMethodCall(node);
     }
+    protected override Expression VisitExtension(Expression node)
+    {
+        return base.VisitExtension(node);
+    }
 
     private record InternalClauseInfo
         : ClauseInfo
