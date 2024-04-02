@@ -62,7 +62,15 @@ public class WhereClauseVisitor : ExpressionVisitor
                     continue;
                 }
 
-                var whereClause = andClauses.Any() ?
+                bool isAndOperator = false;
+
+                if (andClauses.Any())
+                {
+                    isAndOperator = true;
+                    andClauses.Add(clause);
+                }
+
+                var whereClause = isAndOperator ?
                     new WhereClause(andClauses) :
                     new WhereClause(clause);
 
