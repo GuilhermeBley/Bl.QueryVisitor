@@ -1,20 +1,25 @@
+using Bl.QueryVisitor.Expressions;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Collections;
 using System.Collections.Immutable;
 using System.IO.Pipes;
 using System.Linq.Expressions;
+using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
 
 public class WhereClauseVisitor : ExpressionVisitor
 {
-    private IEnumerable<WhereClause> _clauseInfos
-        = Enumerable.Empty<WhereClause>();
+    private string? _whereClause;
 
-    public IReadOnlyList<WhereClause> GetWhereClauses(Expression expression)
+    public string GetWhereClauses(Expression expression)
     {
         Visit(expression);
 
-        return _clauseInfos.ToImmutableArray();
+        return _whereClause ?? string.Empty;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -23,8 +28,9 @@ public class WhereClauseVisitor : ExpressionVisitor
             return base.VisitMethodCall(node);
 
         var whereVisitor = new InternalBinaryWhereClauseVisitor();
+        var result = whereVisitor.Visit(node) as SqlExpression;
 
-        _clauseInfos = whereVisitor.GetWhereClauses(node);
+        _whereClause = result?.Print();
 
         return base.VisitMethodCall(node);
     }
@@ -33,161 +39,152 @@ public class WhereClauseVisitor : ExpressionVisitor
         return base.VisitExtension(node);
     }
 
-    private record InternalClauseInfo
-        : ClauseInfo
+    private class InternalBinaryWhereClauseVisitor
+        : SqlExpressionVisitor
     {
-        public bool IsNextAndOperator = false;
-
-        public InternalClauseInfo(string PropertyName, string ComparerType, object? Value)
-            : base(PropertyName, ComparerType, Value)
+        protected override Expression VisitCase(CaseExpression caseExpression)
         {
-        }
-    }
-
-    private class InternalBinaryWhereClauseVisitor 
-        : ExpressionVisitor
-    {
-        private readonly List<InternalClauseInfo> _whereClauses = new List<InternalClauseInfo>();
-
-        public IEnumerable<WhereClause> GetWhereClauses(Expression expression)
-        {
-            _whereClauses.Clear();
-
-            List<WhereClause> clauses = new();
-            List<ClauseInfo> andClauses = new();
-
-            Visit(expression);
-
-            foreach (var clause in _whereClauses)
-            {
-                if (clause.IsNextAndOperator)
-                {
-                    andClauses.Add(clause);
-                    continue;
-                }
-
-                bool isAndOperator = false;
-
-                if (andClauses.Any())
-                {
-                    isAndOperator = true;
-                    andClauses.Add(clause);
-                }
-
-                var whereClause = isAndOperator ?
-                    new WhereClause(andClauses) :
-                    new WhereClause(clause);
-
-                andClauses.Clear();
-                clauses.Add(whereClause);
-            }
-
-            return clauses;
+            throw new NotImplementedException();
         }
 
-        protected override Expression VisitBinary(BinaryExpression node)
+        protected override Expression VisitCollate(CollateExpression collateExpression)
         {
-            if (_whereClauses.Any())
-                return base.VisitBinary(node); // Already collected
-
-            var nextNode = node;
-
-            do
-            {
-                var binaryExp = nextNode.Left as BinaryExpression
-                    ?? nextNode;
-
-                if (binaryExp is null)
-                    break;
-
-                InternalClauseInfo clause;
-
-                switch (binaryExp.NodeType)
-                {
-                    case ExpressionType.AndAlso:
-                        clause = ExtractClauseInfo(binaryExp);
-                        clause.IsNextAndOperator = true;
-                        _whereClauses.Add(clause);
-                        break;
-                    case ExpressionType.OrElse:
-
-                        var left = binaryExp.Left as BinaryExpression;
-                        var right = binaryExp.Right as BinaryExpression;
-
-                        if (left is null ||
-                            right is null)
-                            throw new ArgumentException("It's only supported one layer of comparison.");
-
-                        _whereClauses.Add(ExtractClauseInfo(left));
-                        _whereClauses.Add(ExtractClauseInfo(right));
-                        break;
-                    default:
-                        clause = ExtractClauseInfo(binaryExp);
-                        _whereClauses.Add(clause);
-                        break;
-                }
-                
-                nextNode = nextNode.Right as BinaryExpression;
-
-            } while (nextNode is BinaryExpression);
-
-            return base.VisitBinary(node);
+            throw new NotImplementedException();
         }
 
-        private static InternalClauseInfo ExtractClauseInfo(BinaryExpression node)
+        protected override Expression VisitColumn(ColumnExpression columnExpression)
         {
-            var propertyName = node.Left.ToString();
-            var constant = node.Right as ConstantExpression;
-            var value = constant?.Value ?? node.Right as MemberExpression;
+            throw new NotImplementedException();
+        }
 
-            if (value is null)
-                throw new ArgumentException("Value can't be collected.");
+        protected override Expression VisitCrossApply(CrossApplyExpression crossApplyExpression)
+        {
+            throw new NotImplementedException();
+        }
 
-            var comparer = node.NodeType.ToString();
+        protected override Expression VisitCrossJoin(CrossJoinExpression crossJoinExpression)
+        {
+            throw new NotImplementedException();
+        }
 
-            return new InternalClauseInfo(propertyName, comparer, value);
+        protected override Expression VisitDistinct(DistinctExpression distinctExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitExcept(ExceptExpression exceptExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitExists(ExistsExpression existsExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitFromSql(FromSqlExpression fromSqlExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitIn(InExpression inExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitInnerJoin(InnerJoinExpression innerJoinExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitIntersect(IntersectExpression intersectExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitLeftJoin(LeftJoinExpression leftJoinExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitLike(LikeExpression likeExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitOrdering(OrderingExpression orderingExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitOuterApply(OuterApplyExpression outerApplyExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitProjection(ProjectionExpression projectionExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitRowNumber(RowNumberExpression rowNumberExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitScalarSubquery(ScalarSubqueryExpression scalarSubqueryExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitSelect(SelectExpression selectExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitSqlBinary(SqlBinaryExpression sqlBinaryExpression)
+        {
+            return Visit(sqlBinaryExpression);
+        }
+
+        protected override Expression VisitSqlConstant(SqlConstantExpression sqlConstantExpression)
+        {
+            return Visit(sqlConstantExpression);
+        }
+
+        protected override Expression VisitSqlFragment(SqlFragmentExpression sqlFragmentExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitSqlFunction(SqlFunctionExpression sqlFunctionExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitSqlParameter(SqlParameterExpression sqlParameterExpression)
+        {
+            return Visit(sqlParameterExpression);
+        }
+
+        protected override Expression VisitSqlUnary(SqlUnaryExpression sqlUnaryExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitTable(TableExpression tableExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitTableValuedFunction(TableValuedFunctionExpression tableValuedFunctionExpression)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Expression VisitUnion(UnionExpression unionExpression)
+        {
+            throw new NotImplementedException();
         }
     }
 }
-
-public class WhereClause
-    : IReadOnlyList<ClauseInfo>
-{
-    private readonly IReadOnlyList<ClauseInfo> _whereClauses;
-    public int Count => _whereClauses.Count;
-    public readonly bool AndOperator;
-    public ClauseInfo this[int index] => _whereClauses[index];
-
-    internal WhereClause(ClauseInfo clause)
-        : this(new[] { clause })
-    {
-
-    }
-
-    internal WhereClause(IEnumerable<ClauseInfo> clauses)
-    {
-        _whereClauses = clauses.ToImmutableArray();
-
-        if (_whereClauses.Count == 0)
-            throw new IndexOutOfRangeException("It requires at least one item.");
-
-        AndOperator = _whereClauses.Count > 1;
-    }
-
-    public IEnumerator<ClauseInfo> GetEnumerator()
-    {
-        return _whereClauses.GetEnumerator();
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return _whereClauses.GetEnumerator();
-    }
-}
-
-
-public record ClauseInfo(
-    string PropertyName,
-    string ComparerType,
-    object? Value
-);
