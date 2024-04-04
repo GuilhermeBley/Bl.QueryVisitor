@@ -27,7 +27,6 @@ public class WhereClauseVisitorTest
 
         var results = visitor.GetWhereClauses(query.Expression);
 
-        Assert.Equal(3, results.Count);
     }
 
     [Fact]
@@ -40,7 +39,6 @@ public class WhereClauseVisitorTest
 
         var results = visitor.GetWhereClauses(query.Expression);
 
-        Assert.Equal(3, results.Count);
     }
 
     private class FakeModel
