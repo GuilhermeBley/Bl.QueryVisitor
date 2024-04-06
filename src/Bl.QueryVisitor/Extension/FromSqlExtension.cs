@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Bl.QueryVisitor.Visitors;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Linq.Expressions;
@@ -71,11 +72,15 @@ public static class FromSqlExtension
 
         public object? Execute(Expression expression)
         {
+            expression = NormalizeExpression(expression);
+
             return _sqlProvider.Execute(expression);
         }
 
         public TResult Execute<TResult>(Expression expression)
         {
+            expression = NormalizeExpression(expression);
+
             return _sqlProvider.Execute<TResult>(expression);
         }
 
@@ -84,12 +89,16 @@ public static class FromSqlExtension
             if (_sqlProvider is not IAsyncQueryProvider asyncQueryProvider)
                 throw new InvalidOperationException("This is not a 'IAsyncQueryProvider'.");
 
+            expression = NormalizeExpression(expression);
+
             return asyncQueryProvider.ExecuteAsync<TResult>(expression, cancellationToken);
         }
 
         private static Expression NormalizeExpression(Expression expression)
         {
-            throw new NotImplementedException("Implement having expression visitor.");
+            var visitor = new HavingPerformanceImprovedFromSqlExpressionVisitor();
+
+            return visitor.Visit(expression);
         }
     }
 }
