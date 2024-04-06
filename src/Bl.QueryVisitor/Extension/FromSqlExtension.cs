@@ -25,6 +25,7 @@ public static class FromSqlExtension
         return generatedQueryable;
     }
 
+    // TODO: Set as private
     public class InternalQueryable<TEntity>
         : IQueryable<TEntity>
     {
@@ -54,6 +55,7 @@ public static class FromSqlExtension
             => _efQueryable.GetEnumerator();
     }
 
+    // TODO: Set as private
     public class InternalQueryProvider 
         : IQueryProvider,
         IAsyncQueryProvider
