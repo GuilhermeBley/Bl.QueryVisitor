@@ -1,5 +1,6 @@
 ﻿using Bl.QueryVisitor.Visitors;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Linq.Expressions;
@@ -19,8 +20,8 @@ public static class FromSqlExtension
         IQueryable<TEntity>? generatedQueryable = dbSet.FromSqlRaw(sql, parameters);
         
         if (!sql.Contains("{having}", StringComparison.OrdinalIgnoreCase))
-            generatedQueryable = new InternalQueryable<TEntity>(generatedQueryable);
-
+            generatedQueryable = new InternalQueryable<TEntity>(generatedQueryable, dbSet.EntityType);
+        
         return generatedQueryable;
     }
 
@@ -34,10 +35,10 @@ public static class FromSqlExtension
         /// </summary>
         private readonly InternalQueryProvider _provider;
 
-        public InternalQueryable(IQueryable<TEntity> other)
+        public InternalQueryable(IQueryable<TEntity> other, IEntityType entityType)
         {
             _efQueryable = other;
-            _provider = new InternalQueryProvider(other.Provider);
+            _provider = new InternalQueryProvider(other.Provider, entityType);
         }
 
         public Type ElementType => _efQueryable.ElementType;
@@ -57,46 +58,47 @@ public static class FromSqlExtension
         : IQueryProvider,
         IAsyncQueryProvider
     {
-        private readonly IQueryProvider _sqlProvider;
+        private readonly IEntityType _entityType;
+        private readonly IAsyncQueryProvider _asyncProvider;
 
-        public InternalQueryProvider(IQueryProvider sqlProvider)
+        public InternalQueryProvider(IQueryProvider sqlProvider, IEntityType entityType)
         {
-            _sqlProvider = sqlProvider;
+            _asyncProvider = sqlProvider as IAsyncQueryProvider ?? throw new InvalidOperationException("This is not a 'IAsyncQueryProvider'.");
+            _entityType = entityType;
         }
 
         public IQueryable CreateQuery(Expression expression)
-            => _sqlProvider.CreateQuery(expression);
+            => _asyncProvider.CreateQuery(expression);
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-            => _sqlProvider.CreateQuery<TElement>(expression);
+            => _asyncProvider.CreateQuery<TElement>(expression);
 
         public object? Execute(Expression expression)
         {
             expression = NormalizeExpression(expression);
 
-            return _sqlProvider.Execute(expression);
+            return _asyncProvider.Execute(expression);
         }
 
         public TResult Execute<TResult>(Expression expression)
         {
             expression = NormalizeExpression(expression);
 
-            return _sqlProvider.Execute<TResult>(expression);
+            return _asyncProvider.Execute<TResult>(expression);
         }
 
         public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
         {
-            if (_sqlProvider is not IAsyncQueryProvider asyncQueryProvider)
-                throw new InvalidOperationException("This is not a 'IAsyncQueryProvider'.");
-
             expression = NormalizeExpression(expression);
 
-            return asyncQueryProvider.ExecuteAsync<TResult>(expression, cancellationToken);
+            return _asyncProvider.ExecuteAsync<TResult>(expression, cancellationToken);
         }
 
-        private static Expression NormalizeExpression(Expression expression)
+        private Expression NormalizeExpression(Expression expression)
         {
-            var visitor = new HavingPerformanceImprovedFromSqlExpressionVisitor();
+            var visitor = new HavingPerformanceImprovedFromSqlExpressionVisitor(
+                _asyncProvider,
+                _entityType);
 
             return visitor.Visit(expression);
         }
