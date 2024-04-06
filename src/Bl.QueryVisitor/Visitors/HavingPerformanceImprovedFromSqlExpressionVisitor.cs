@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Pomelo.EntityFrameworkCore.MySql.Query.Internal;
 using System.Linq.Expressions;
@@ -28,6 +29,14 @@ internal class HavingPerformanceImprovedFromSqlExpressionVisitor
         if (whereClauses is null)
             return base.VisitExtension(selectExpression);
 
-        
+        if (selectExpression.Tables.Count != 2)
+            return base.VisitExtension(selectExpression);
+
+        if ((Expression)selectExpression.Tables[0] is not QueryRootExpression firstTable)
+            return base.VisitExtension(selectExpression);
+
+        var secondTable = (SelectExpression)selectExpression.Tables[1];
+
+        throw new NotImplementedException();        
     }
 }
