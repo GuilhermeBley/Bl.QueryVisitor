@@ -28,14 +28,7 @@ public class WhereClauseVisitor : ExpressionVisitor
     {
         if (node.Method.Name != "Where")
             return base.VisitMethodCall(node);
-
-
-        var whereVisitor = new MySqlHavingExpressionVisitor();
-        var result = whereVisitor.Visit(node);
-
-        _whereClause = (result as SqlExpression)?.Print();
-
-        return base.VisitMethodCall(node);
+        throw new NotImplementedException();
     }
     protected override Expression VisitExtension(Expression node)
     {

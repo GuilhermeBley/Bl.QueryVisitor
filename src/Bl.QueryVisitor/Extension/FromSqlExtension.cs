@@ -1,6 +1,7 @@
 ﻿using Bl.QueryVisitor.Visitors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Linq.Expressions;
@@ -9,7 +10,7 @@ namespace Bl.QueryVisitor.Extension;
 
 public static class FromSqlExtension
 {
-    public static IQueryable<TEntity> FromSqlRowE<TEntity>(
+    public static IQueryable<TEntity> FromSqlRawE<TEntity>(
         this DbSet<TEntity> dbSet,
         [NotParameterized] string sql,
         params object[] parameters)
@@ -35,16 +36,20 @@ public static class FromSqlExtension
         /// Provider that improves the expressions changes after execution.
         /// </summary>
         private readonly InternalQueryProvider _provider;
+        private readonly IEntityType _entityType;
+        private readonly IAsyncQueryProvider _asyncProvider;
 
         public InternalQueryable(IQueryable<TEntity> other, IEntityType entityType)
         {
             _efQueryable = other;
+            _entityType = entityType;
+            _asyncProvider = (IAsyncQueryProvider)other.Provider;
             _provider = new InternalQueryProvider(other.Provider, entityType);
         }
 
         public Type ElementType => _efQueryable.ElementType;
 
-        public Expression Expression => _efQueryable.Expression;
+        public Expression Expression => NormalizeExpression(_efQueryable.Expression);
 
         public IQueryProvider Provider => _provider;
 
@@ -53,6 +58,15 @@ public static class FromSqlExtension
 
         IEnumerator<TEntity> IEnumerable<TEntity>.GetEnumerator()
             => _efQueryable.GetEnumerator();
+
+        private Expression NormalizeExpression(Expression expression)
+        {
+            var visitor = new HavingPerformanceImprovedFromSqlExpressionVisitor(
+                _asyncProvider,
+                _entityType);
+
+            return visitor.Visit(expression);
+        }
     }
 
     // TODO: Set as private
@@ -70,10 +84,10 @@ public static class FromSqlExtension
         }
 
         public IQueryable CreateQuery(Expression expression)
-            => _asyncProvider.CreateQuery(expression);
+            => _asyncProvider.CreateQuery(NormalizeExpression(expression));
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-            => _asyncProvider.CreateQuery<TElement>(expression);
+            => _asyncProvider.CreateQuery<TElement>(NormalizeExpression(expression));
 
         public object? Execute(Expression expression)
         {

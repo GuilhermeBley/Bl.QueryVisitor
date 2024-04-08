@@ -24,8 +24,6 @@ internal class HavingPerformanceImprovedFromSqlExpressionVisitor
         => extensionExpression switch
         {
             SelectExpression selectExpression => VisitSelect(selectExpression),
-            ShapedQueryExpression shapedQueryExpression => shapedQueryExpression.Update(
-                Visit(shapedQueryExpression.QueryExpression), Visit(shapedQueryExpression.ShaperExpression)),
             _ => base.VisitExtension(extensionExpression)
         };
 

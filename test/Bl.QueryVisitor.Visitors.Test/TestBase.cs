@@ -32,6 +32,9 @@ public class TestBase
     public IServiceProvider ScopedProvider()
         => Provider.CreateAsyncScope().ServiceProvider;
 
+    public FakeContext GetFakeContext()
+        => ScopedProvider().GetRequiredService<FakeContext>();
+
     public class FakeContext 
         : DbContext
     {
@@ -49,7 +52,7 @@ public class TestBase
             optionsBuilder
                 .UseMySql(
                     connectionString: _configuration["MySql:ConnectionString"].ToString(),
-                    ServerVersion.Create(1, 1, 1, Pomelo.EntityFrameworkCore.MySql.Infrastructure.ServerType.MySql));
+                    ServerVersion.Create(5, 7, 2, Pomelo.EntityFrameworkCore.MySql.Infrastructure.ServerType.MySql));
 
             base.OnConfiguring(optionsBuilder);
         }

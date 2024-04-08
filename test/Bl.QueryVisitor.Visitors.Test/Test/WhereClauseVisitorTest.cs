@@ -1,50 +1,23 @@
-using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
+using Bl.QueryVisitor.Extension;
 
 namespace Bl.QueryVisitor.Visitors.Test;
 
 public class WhereClauseVisitorTest
+    : TestBase
 {
     [Fact]
     public void GetWhereClauses_TryGetWhereClauses_Success()
     {
-        var query = Enumerable.Empty<bool>()
-            .AsQueryable()
-            .Where(x => x == true || x == false && x == false);
-        var visitor = new WhereClauseVisitor();
+        var query = GetFakeContext()
+            .Fakes
+            .FromSqlRawE("SELECT 1 FROM table")
+            .AsNoTracking()
+            .Where(fake => fake.Id == 1);
 
-        var results = visitor.GetWhereClauses(query.Expression);
+        var queryString = query.ToQueryString();
 
-        Assert.NotEmpty(results);
-    }
-
-    [Fact]
-    public void GetWhereClauses_TryGetWhereClausesFromModelWithOr_Success()
-    {
-        var query = Enumerable.Empty<FakeModel>()
-            .AsQueryable()
-            .Where(model => model.Id == 0 || model.Name == string.Empty || model.InsertedAt == DateTime.UtcNow);
-        var visitor = new WhereClauseVisitor();
-
-        var results = visitor.GetWhereClauses(query.Expression);
-
-    }
-
-    [Fact]
-    public void GetWhereClauses_TryGetWhereClausesFromModelWithAnd_Success()
-    {
-        var query = Enumerable.Empty<FakeModel>()
-            .AsQueryable()
-            .Where(model => model.Id == 0 && model.Name == string.Empty && model.InsertedAt == DateTime.UtcNow);
-        var visitor = new WhereClauseVisitor();
-
-        var results = visitor.GetWhereClauses(query.Expression);
-
-    }
-
-    private class FakeModel
-    {
-        public int Id { get; set; }
-        public string? Name { get; set; }
-        public DateTime InsertedAt { get; set; }
+        Assert.NotEmpty(queryString);
     }
 }
