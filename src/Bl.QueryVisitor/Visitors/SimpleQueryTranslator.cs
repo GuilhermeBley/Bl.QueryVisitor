@@ -5,62 +5,48 @@ using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
 
-public class SimpleQueryTranslator : ExpressionVisitor
+public interface ISimpleQueryTranslator
 {
-    private StringBuilder sb = null!;
+    SimpleQueryTranslatorResult Translate(Expression expression);
+}
+
+public class SimpleQueryTranslator 
+    : ExpressionVisitor,
+    ISimpleQueryTranslator
+{
+    /// <summary>
+    /// Storage all clauses, example: "(x > 1) AND (x < 10)".
+    /// </summary>
+    private readonly StringBuilder _whereBuilder = new();
+    /// <summary>
+    /// Storage all orderers, example "Field ASC, Field2 DESC".
+    /// </summary>
     private string _orderBy = string.Empty;
-    private int? _skip = null;
-    private int? _take = null;
-    private string _whereClause = string.Empty;
+    private uint? _skip = null;
+    private uint? _take = null;
     private readonly Dictionary<string, object?> _parameters = new();
     private int _lastParamId = 1000;
-
-    public IReadOnlyDictionary<string, object?> Parameters => _parameters;
-    public int? Skip
-    {
-        get
-        {
-            return _skip;
-        }
-    }
-
-    public int? Take
-    {
-        get
-        {
-            return _take;
-        }
-    }
-
-    public string OrderBy
-    {
-        get
-        {
-            return _orderBy;
-        }
-    }
-
-    public string WhereClause
-    {
-        get
-        {
-            return _whereClause;
-        }
-    }
 
     public SimpleQueryTranslator()
     {
     }
 
-
-    public string Translate(Expression expression)
+    public SimpleQueryTranslatorResult Translate(Expression expression)
     {
-        this.sb = new StringBuilder();
+        _whereBuilder.Clear();
+        _orderBy = string.Empty;
         _lastParamId = 1000;
         _parameters.Clear();
+        _skip = null;
+        _take = null;
+        
         this.Visit(expression);
-        _whereClause = this.sb.ToString();
-        return _whereClause;
+
+        return new SimpleQueryTranslatorResult(
+            Parameters: _parameters,
+            HavingSql: NormalizeHaving(),
+            OrderBySql: NormalizeOrderBy(),
+            LimitSql: NormalizeLimit());
     }
 
     private static Expression StripQuotes(Expression e)
@@ -97,7 +83,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
                 return this.Visit(nextExpression);
             }
         }
-        else if (m.Method.Name == "OrderBy")
+        else if (m.Method.Name == "OrderBy" || m.Method.Name == "ThenBy")
         {
             if (this.ParseOrderByExpression(m, "ASC"))
             {
@@ -105,7 +91,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
                 return this.Visit(nextExpression);
             }
         }
-        else if (m.Method.Name == "OrderByDescending")
+        else if (m.Method.Name == "OrderByDescending" || m.Method.Name == "ThenByDescending")
         {
             if (this.ParseOrderByExpression(m, "DESC"))
             {
@@ -122,7 +108,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
         switch (u.NodeType)
         {
             case ExpressionType.Not:
-                sb.Append(" NOT ");
+                _whereBuilder.Append(" NOT ");
                 this.Visit(u.Operand);
                 break;
             case ExpressionType.Convert:
@@ -142,63 +128,63 @@ public class SimpleQueryTranslator : ExpressionVisitor
     /// <returns></returns>
     protected override Expression VisitBinary(BinaryExpression b)
     {
-        sb.Append("(");
+        _whereBuilder.Append("(");
         this.Visit(b.Left);
 
         switch (b.NodeType)
         {
             case ExpressionType.And:
-                sb.Append(" AND ");
+                _whereBuilder.Append(" AND ");
                 break;
 
             case ExpressionType.AndAlso:
-                sb.Append(" AND ");
+                _whereBuilder.Append(" AND ");
                 break;
 
             case ExpressionType.Or:
-                sb.Append(" OR ");
+                _whereBuilder.Append(" OR ");
                 break;
 
             case ExpressionType.OrElse:
-                sb.Append(" OR ");
+                _whereBuilder.Append(" OR ");
                 break;
 
             case ExpressionType.Equal:
                 if (IsNullConstant(b.Right))
                 {
-                    sb.Append(" IS ");
+                    _whereBuilder.Append(" IS ");
                 }
                 else
                 {
-                    sb.Append(" = ");
+                    _whereBuilder.Append(" = ");
                 }
                 break;
 
             case ExpressionType.NotEqual:
                 if (IsNullConstant(b.Right))
                 {
-                    sb.Append(" IS NOT ");
+                    _whereBuilder.Append(" IS NOT ");
                 }
                 else
                 {
-                    sb.Append(" <> ");
+                    _whereBuilder.Append(" <> ");
                 }
                 break;
 
             case ExpressionType.LessThan:
-                sb.Append(" < ");
+                _whereBuilder.Append(" < ");
                 break;
 
             case ExpressionType.LessThanOrEqual:
-                sb.Append(" <= ");
+                _whereBuilder.Append(" <= ");
                 break;
 
             case ExpressionType.GreaterThan:
-                sb.Append(" > ");
+                _whereBuilder.Append(" > ");
                 break;
 
             case ExpressionType.GreaterThanOrEqual:
-                sb.Append(" >= ");
+                _whereBuilder.Append(" >= ");
                 break;
 
             default:
@@ -207,7 +193,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
         }
 
         this.Visit(b.Right);
-        sb.Append(")");
+        _whereBuilder.Append(")");
         return b;
     }
 
@@ -231,14 +217,14 @@ public class SimpleQueryTranslator : ExpressionVisitor
 
         if (q == null && c.Value == null)
         {
-            sb.Append(lastParamIdText);
+            _whereBuilder.Append(lastParamIdText);
             _parameters.Add(lastParamIdText, null);
         }
         else if (q == null)
         {
             ArgumentNullException.ThrowIfNull(c.Value);
 
-            sb.Append(lastParamIdText);
+            _whereBuilder.Append(lastParamIdText);
             _parameters.Add(lastParamIdText, c.Value);
         }
 
@@ -251,7 +237,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
     {
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
-            sb.Append(m.Member.Name);
+            _whereBuilder.Append(m.Member.Name);
             return m;
         }
         if (m.Expression is ConstantExpression constant)
@@ -289,7 +275,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
             }
             else
             {
-                _orderBy = string.Format("{0}, {1} {2}", _orderBy, body.Member.Name, order);
+                _orderBy = string.Format("{0} {1}, {2}", body.Member.Name, order, _orderBy);
             }
 
             return true;
@@ -302,8 +288,8 @@ public class SimpleQueryTranslator : ExpressionVisitor
     {
         ConstantExpression sizeExpression = (ConstantExpression)expression.Arguments[1];
 
-        int size;
-        if (int.TryParse(sizeExpression.Value?.ToString(), out size))
+        uint size;
+        if (uint.TryParse(sizeExpression.Value?.ToString(), out size))
         {
             _take = size;
             return true;
@@ -316,13 +302,43 @@ public class SimpleQueryTranslator : ExpressionVisitor
     {
         ConstantExpression sizeExpression = (ConstantExpression)expression.Arguments[1];
 
-        int size;
-        if (int.TryParse(sizeExpression.Value?.ToString(), out size))
+        uint size;
+        if (uint.TryParse(sizeExpression.Value?.ToString(), out size))
         {
             _skip = size;
             return true;
         }
 
         return false;
+    }
+
+    private string NormalizeHaving()
+    {
+        var whereClauses = _whereBuilder.ToString();
+
+        if (string.IsNullOrWhiteSpace(whereClauses))
+            return string.Empty;
+
+        return string.Concat('\n', "HAVING ", whereClauses);
+    }
+
+    private string NormalizeLimit()
+    {
+        if (_skip is null && _take is null)
+            return string.Empty;
+
+        var take = _take ?? int.MaxValue;
+
+        var skip = _skip ?? 0;
+
+        return string.Concat('\n', "LIMIT ", _take, " OFFSET ", _skip);
+    }
+
+    private string NormalizeOrderBy()
+    {
+        if (string.IsNullOrWhiteSpace(_orderBy))
+            return string.Empty;
+
+        return string.Concat('\n', "ORDER BY ", _orderBy);
     }
 }
