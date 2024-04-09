@@ -5,7 +5,7 @@ namespace Bl.QueryVisitor.Visitors;
 
 public class SimpleQueryTranslator : ExpressionVisitor
 {
-    private StringBuilder sb;
+    private StringBuilder sb = null!;
     private string _orderBy = string.Empty;
     private int? _skip = null;
     private int? _take = null;
@@ -206,7 +206,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
 
     protected override Expression VisitConstant(ConstantExpression c)
     {
-        IQueryable q = c.Value as IQueryable;
+        IQueryable? q = c.Value as IQueryable;
 
         if (q == null && c.Value == null)
         {
@@ -214,6 +214,8 @@ public class SimpleQueryTranslator : ExpressionVisitor
         }
         else if (q == null)
         {
+            ArgumentNullException.ThrowIfNull(c.Value);
+
             switch (Type.GetTypeCode(c.Value.GetType()))
             {
                 case TypeCode.Boolean:
@@ -265,7 +267,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
         UnaryExpression unary = (UnaryExpression)expression.Arguments[1];
         LambdaExpression lambdaExpression = (LambdaExpression)unary.Operand;
 
-        MemberExpression body = lambdaExpression.Body as MemberExpression;
+        MemberExpression? body = lambdaExpression.Body as MemberExpression;
         if (body != null)
         {
             if (string.IsNullOrEmpty(_orderBy))
@@ -288,7 +290,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
         ConstantExpression sizeExpression = (ConstantExpression)expression.Arguments[1];
 
         int size;
-        if (int.TryParse(sizeExpression.Value.ToString(), out size))
+        if (int.TryParse(sizeExpression.Value?.ToString(), out size))
         {
             _take = size;
             return true;
@@ -302,7 +304,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
         ConstantExpression sizeExpression = (ConstantExpression)expression.Arguments[1];
 
         int size;
-        if (int.TryParse(sizeExpression.Value.ToString(), out size))
+        if (int.TryParse(sizeExpression.Value?.ToString(), out size))
         {
             _skip = size;
             return true;
