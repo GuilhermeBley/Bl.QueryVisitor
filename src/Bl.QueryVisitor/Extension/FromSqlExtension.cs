@@ -21,8 +21,11 @@ public static class FromSqlExtension
         IQueryable<TEntity>? generatedQueryable = dbSet.FromSqlRaw(sql, parameters);
         
         if (!sql.Contains("{having}", StringComparison.OrdinalIgnoreCase))
-            generatedQueryable = new InternalQueryable<TEntity>(generatedQueryable, dbSet.EntityType);
-        
+            return ((IQueryable)dbSet).Provider.CreateQuery<TEntity>(
+                new MyOwnQueryRootExpression(
+                    asyncQueryProvider: (IAsyncQueryProvider)((IQueryable)dbSet).Provider,
+                    entityType: dbSet.EntityType));
+
         return generatedQueryable;
     }
 
@@ -117,6 +120,35 @@ public static class FromSqlExtension
                 _entityType);
 
             return visitor.Visit(expression);
+        }
+    }
+
+    public class MyOwnQueryRootExpression : QueryRootExpression
+    {
+        private readonly IAsyncQueryProvider asyncQueryProvider;
+        private readonly IEntityType entityType;
+
+        public MyOwnQueryRootExpression(
+            IAsyncQueryProvider asyncQueryProvider, 
+            IEntityType entityType) 
+            : base(asyncQueryProvider, entityType)
+        {
+            this.asyncQueryProvider = asyncQueryProvider;
+            this.entityType = entityType;
+        }
+
+        protected override Expression VisitChildren(ExpressionVisitor visitor)
+        {
+            var havingVisitor = new HavingPerformanceImprovedFromSqlExpressionVisitor(
+                asyncQueryProvider,
+                entityType);
+            
+            return havingVisitor.Visit(base.VisitChildren(visitor));
+        }
+
+        protected override void Print(ExpressionPrinter expressionPrinter)
+        {
+            base.Print(expressionPrinter);
         }
     }
 }

@@ -12,9 +12,9 @@ public class WhereClauseVisitorTest
     {
         var query = GetFakeContext()
             .Fakes
-            .FromSqlRawE("SELECT 1 FROM table")
+            .FromSqlRawE("SELECT 1 FROM ALL")
             .AsNoTracking()
-            .Where(fake => fake.Id == 1);
+            .Where(m => m.Id == 1);
 
         var queryString = query.ToQueryString();
 
