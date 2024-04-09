@@ -15,7 +15,7 @@ public class SimpleQueryTranslator : ExpressionVisitor
     private readonly Dictionary<string, object?> _parameters = new();
     private int _lastParamId = 1000;
 
-    private IReadOnlyDictionary<string, object?> Parameters => _parameters;
+    public IReadOnlyDictionary<string, object?> Parameters => _parameters;
     public int? Skip
     {
         get
@@ -209,6 +209,18 @@ public class SimpleQueryTranslator : ExpressionVisitor
         this.Visit(b.Right);
         sb.Append(")");
         return b;
+    }
+
+    protected override Expression VisitNew(NewExpression node)
+    {
+        var convertedExp = Expression.Convert(node, typeof(object));
+
+        var instantiator = Expression
+            .Lambda<Func<object>>(convertedExp)
+            .Compile();
+        var res = instantiator();
+
+        return Visit(Expression.Constant(res));
     }
 
     protected override Expression VisitConstant(ConstantExpression c)

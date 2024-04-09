@@ -25,7 +25,7 @@ public class WhereClauseVisitorTest
     }
 
     [Fact]
-    public void GetWhereClauses_TryGetWhereFunctionsClauses_Success()
+    public void GetWhereClauses_TryGetWhereVariablesClauses_Success()
     {
         var time = new DateTime(1900, 1, 1);
 
@@ -41,5 +41,39 @@ public class WhereClauseVisitorTest
         var queryString = visitor.Translate(query.Expression);
 
         Assert.NotEmpty(queryString);
+    }
+
+    [Fact]
+    public void GetWhereClauses_TryGetWhereFunctionsClauses_Success()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.InsertedAt == new DateTime(1900, 1, 1))
+            .OrderBy(model => model.Name)
+            .Skip(100)
+            .Take(100);
+
+        var visitor = new SimpleQueryTranslator();
+
+        var queryString = visitor.Translate(query.Expression);
+
+        Assert.Equal("(InsertedAt = @P1001)", queryString, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GetWhereClauses_TryGetWhereFunctionsClausesCheckNewDateTimeData_Success()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.InsertedAt == new DateTime(1900, 1, 1))
+            .OrderBy(model => model.Name)
+            .Skip(100)
+            .Take(100);
+
+        var visitor = new SimpleQueryTranslator();
+
+        var queryString = visitor.Translate(query.Expression);
+
+        Assert.Equal(new DateTime(1900, 1, 1), visitor.Parameters.First().Value);
     }
 }
