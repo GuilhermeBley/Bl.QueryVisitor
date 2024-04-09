@@ -10,7 +10,10 @@ public class SimpleQueryTranslator : ExpressionVisitor
     private int? _skip = null;
     private int? _take = null;
     private string _whereClause = string.Empty;
+    private readonly Dictionary<string, object?> _parameters = new();
+    private int _lastParamId = 1000;
 
+    private IReadOnlyDictionary<string, object?> Parameters => _parameters;
     public int? Skip
     {
         get
@@ -51,6 +54,8 @@ public class SimpleQueryTranslator : ExpressionVisitor
     public string Translate(Expression expression)
     {
         this.sb = new StringBuilder();
+        _lastParamId = 1000;
+        _parameters.Clear();
         this.Visit(expression);
         _whereClause = this.sb.ToString();
         return _whereClause;
@@ -208,40 +213,22 @@ public class SimpleQueryTranslator : ExpressionVisitor
     {
         IQueryable? q = c.Value as IQueryable;
 
+        var lastParamIdText = $"@P{_lastParamId}";
+
         if (q == null && c.Value == null)
         {
-            sb.Append("NULL");
+            sb.Append(lastParamIdText);
+            _parameters.Add(lastParamIdText, null);
         }
         else if (q == null)
         {
             ArgumentNullException.ThrowIfNull(c.Value);
 
-            switch (Type.GetTypeCode(c.Value.GetType()))
-            {
-                case TypeCode.Boolean:
-                    sb.Append(((bool)c.Value) ? 1 : 0);
-                    break;
-
-                case TypeCode.String:
-                    sb.Append("'");
-                    sb.Append(c.Value);
-                    sb.Append("'");
-                    break;
-
-                case TypeCode.DateTime:
-                    sb.Append("'");
-                    sb.Append(c.Value);
-                    sb.Append("'");
-                    break;
-
-                case TypeCode.Object:
-                    throw new NotSupportedException(string.Format("The constant for '{0}' is not supported", c.Value));
-
-                default:
-                    sb.Append(c.Value);
-                    break;
-            }
+            sb.Append(lastParamIdText);
+            _parameters.Add(lastParamIdText, c.Value);
         }
+
+        _lastParamId++; // always go to the next param
 
         return c;
     }

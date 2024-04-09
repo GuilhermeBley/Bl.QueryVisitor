@@ -10,13 +10,16 @@ public class WhereClauseVisitorTest
     [Fact]
     public void GetWhereClauses_TryGetWhereClauses_Success()
     {
-        var query = GetFakeContext()
-            .Fakes
-            .FromSqlRawE("SELECT 1 FROM ALL")
-            .AsNoTracking()
-            .Where(m => m.Id == 1);
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id == 1 && model.Name == "asc" || model.Name == "asc213")
+            .OrderBy(model => model.Name)
+            .Skip(100)
+            .Take(100);
 
-        var queryString = query.ToQueryString();
+        var visitor = new SimpleQueryTranslator();
+
+        var queryString = visitor.Translate(query.Expression);
 
         Assert.NotEmpty(queryString);
     }
