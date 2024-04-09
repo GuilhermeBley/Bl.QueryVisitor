@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.Metrics;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
@@ -239,6 +241,18 @@ public class SimpleQueryTranslator : ExpressionVisitor
         {
             sb.Append(m.Member.Name);
             return m;
+        }
+        if (m.Expression is ConstantExpression constant)
+        {
+            var objectMember = Expression.Convert(m, typeof(object));
+
+            var getterLambda = Expression.Lambda<Func<object>>(objectMember);
+
+            var getter = getterLambda.Compile();
+
+            var result = getter();
+
+            return Visit(Expression.Constant(result));
         }
 
         throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
