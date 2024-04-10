@@ -182,7 +182,7 @@ public class SimpleQueryTranslator
                 }
                 else
                 {
-                    _whereBuilder.Append(" <> ");
+                    _whereBuilder.Append(" != ");
                 }
                 break;
 
