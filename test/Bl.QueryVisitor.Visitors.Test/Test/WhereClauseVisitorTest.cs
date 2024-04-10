@@ -1,7 +1,6 @@
 namespace Bl.QueryVisitor.Visitors.Test;
 
 public class WhereClauseVisitorTest
-    : TestBase
 {
     [Fact]
     public void Translate_TryGetWhereConstClauses_Success()

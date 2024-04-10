@@ -185,7 +185,7 @@ public static class FromSqlExtension
 
         public static TResult ExecuteDapperQuery<TResult>(IDbConnection connection, CommandDefinition commandDefinition, Type entityType)
         {
-            // Get the QueryAsync method using reflection
+            // Get the Query method using reflection
             MethodInfo queryAsyncMethod =
                 typeof(IDbConnection).GetMethod("Query", new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
                 .MakeGenericMethod(entityType)
