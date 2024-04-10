@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Data;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
@@ -39,28 +40,31 @@ public static class FromSqlExtension
         : IQueryable<TEntity>,
         IQueryingEnumerable
     {
-        private readonly IQueryable<TEntity> _queryable;
         private readonly CommandDefinition _commandDefinition;
         /// <summary>
         /// Provider that improves the expressions changes after execution.
         /// </summary>
         private readonly InternalQueryProvider _provider;
+        private readonly Expression _expression;
 
-        public InternalQueryable(IDbConnection dbConnection, CommandDefinition commandDefinition)
+        public InternalQueryable(
+            IDbConnection dbConnection, 
+            CommandDefinition commandDefinition,
+            Expression? expression = null)
         {
             _commandDefinition = commandDefinition;
-            _queryable = Enumerable.Empty<TEntity>().AsQueryable<TEntity>();
-            _provider = new(_queryable, dbConnection, commandDefinition);
+            _provider = new(dbConnection, commandDefinition);
+            _expression = expression ?? Expression.Constant(this);
         }
 
-        public Type ElementType => _queryable.ElementType;
+        public Type ElementType => typeof(TEntity);
 
-        public Expression Expression => _queryable.Expression;
+        public Expression Expression => _expression;
 
         public IQueryProvider Provider => _provider;
 
         public IEnumerator GetEnumerator()
-            => _queryable.GetEnumerator();
+            => this.Provider.Execute<IEnumerator<TEntity>>(this.Expression);
 
         public string ToQueryString()
         {
@@ -75,7 +79,7 @@ public static class FromSqlExtension
         }
 
         IEnumerator<TEntity> IEnumerable<TEntity>.GetEnumerator()
-            => _queryable.GetEnumerator();
+            => this.Provider.Execute<IEnumerator<TEntity>>(this.Expression);
     }
 
     private class InternalQueryProvider
@@ -83,24 +87,23 @@ public static class FromSqlExtension
         IAsyncQueryProvider
     {
         private readonly IDbConnection _dbConnection;
-        private readonly IQueryable _other;
         private readonly CommandDefinition _commandDefinition;
 
         public InternalQueryProvider(
-            IQueryable other,
             IDbConnection dbConnection, 
             CommandDefinition commandDefinition)
         {
-            _other = other;
             _commandDefinition = commandDefinition;
             _dbConnection = dbConnection;
         }
 
         public IQueryable CreateQuery(Expression expression)
-            => _other.Provider.CreateQuery(expression);
+        {
+            throw new NotImplementedException();
+        }
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-            => _other.Provider.CreateQuery<TElement>(expression);
+            => new InternalQueryable<TElement>(_dbConnection, _commandDefinition, expression);
 
         public object? Execute(Expression expression)
             => Execute<IEnumerable<dynamic>>(expression);
