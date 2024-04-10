@@ -130,7 +130,7 @@ public static class FromSqlExtension
                     flags: _commandDefinition.Flags,
                     cancellationToken: _commandDefinition.CancellationToken);
 
-            return ExecuteDapperQuery<TResult>(newCommand, resultType);
+            return ExecuteDapperQuery<TResult>(_dbConnection, newCommand, resultType);
         }
 
         public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
@@ -168,10 +168,10 @@ public static class FromSqlExtension
                     flags: _commandDefinition.Flags,
                     cancellationToken: _commandDefinition.CancellationToken);
 
-            return ExecuteDapperQueryAsync<TResult>(newCommand, resultType);
+            return ExecuteDapperQueryAsync<TResult>(_dbConnection, newCommand, resultType);
         }
 
-        public static TResult ExecuteDapperQueryAsync<TResult>(CommandDefinition commandDefinition, Type entityType)
+        public static TResult ExecuteDapperQueryAsync<TResult>(IDbConnection connection, CommandDefinition commandDefinition, Type entityType)
         {
             // Get the QueryAsync method using reflection
             MethodInfo queryAsyncMethod =
@@ -179,19 +179,19 @@ public static class FromSqlExtension
                 .MakeGenericMethod(entityType)
                 ?? throw new InvalidOperationException("Cannot find dapper method 'QueryAsync'.");
 
-            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { commandDefinition })
+            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
                 ?? throw new InvalidOperationException("Invalid 'TResult'.");
         }
 
-        public static TResult ExecuteDapperQuery<TResult>(CommandDefinition commandDefinition, Type entityType)
+        public static TResult ExecuteDapperQuery<TResult>(IDbConnection connection, CommandDefinition commandDefinition, Type entityType)
         {
             // Get the QueryAsync method using reflection
             MethodInfo queryAsyncMethod =
                 typeof(IDbConnection).GetMethod("Query", new[] { typeof(CommandDefinition) })?
                 .MakeGenericMethod(entityType)
-                ?? throw new InvalidOperationException("Cannot find dapper method 'QueryAsync'.");
+                ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
 
-            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { commandDefinition })
+            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
                 ?? throw new InvalidOperationException("Invalid 'TResult'.");
         }
     }
