@@ -9,7 +9,7 @@ public class FromSqlQueryableTest
     [Fact]
     public void Execute_TryExecuteWhereWithProvider_Success()
     {
-        var connection = CreateConnection();
+        using var connection = CreateConnection();
 
         var result = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .Where(model => model.Id == 1);
@@ -22,7 +22,7 @@ public class FromSqlQueryableTest
     [Fact]
     public void Execute_TryExecuteOrderWithProvider_Success()
     {
-        var connection = CreateConnection();
+        using var connection = CreateConnection();
 
         var result = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .OrderByDescending(model => model.Id)
@@ -36,7 +36,7 @@ public class FromSqlQueryableTest
     [Fact]
     public void Execute_TryExecuteLimitWithProvider_Success()
     {
-        var connection = CreateConnection();
+        using var connection = CreateConnection();
 
         var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .Take(1)
