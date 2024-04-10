@@ -5,6 +5,7 @@ using System.Collections;
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace Bl.QueryVisitor.Extension;
 
@@ -48,8 +49,8 @@ public static class FromSqlExtension
         public InternalQueryable(IDbConnection dbConnection, CommandDefinition commandDefinition)
         {
             _commandDefinition = commandDefinition;
-            _queryable = Enumerable.Empty<TEntity>().AsQueryable();
-            _provider = new(dbConnection, commandDefinition);
+            _queryable = Enumerable.Empty<TEntity>().AsQueryable<TEntity>();
+            _provider = new(_queryable, dbConnection, commandDefinition);
         }
 
         public Type ElementType => _queryable.ElementType;
@@ -82,19 +83,24 @@ public static class FromSqlExtension
         IAsyncQueryProvider
     {
         private readonly IDbConnection _dbConnection;
+        private readonly IQueryable _other;
         private readonly CommandDefinition _commandDefinition;
 
-        public InternalQueryProvider(IDbConnection dbConnection, CommandDefinition commandDefinition)
+        public InternalQueryProvider(
+            IQueryable other,
+            IDbConnection dbConnection, 
+            CommandDefinition commandDefinition)
         {
+            _other = other;
             _commandDefinition = commandDefinition;
             _dbConnection = dbConnection;
         }
 
         public IQueryable CreateQuery(Expression expression)
-            => Enumerable.Empty<object>().AsQueryable();
+            => _other.Provider.CreateQuery(expression);
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-            => Enumerable.Empty<TElement>().AsQueryable();
+            => _other.Provider.CreateQuery<TElement>(expression);
 
         public object? Execute(Expression expression)
             => Execute<IEnumerable<dynamic>>(expression);
@@ -171,28 +177,43 @@ public static class FromSqlExtension
             return ExecuteDapperQueryAsync<TResult>(_dbConnection, newCommand, resultType);
         }
 
-        public static TResult ExecuteDapperQueryAsync<TResult>(IDbConnection connection, CommandDefinition commandDefinition, Type entityType)
+        public static TResult ExecuteDapperQueryAsync<TResult>(
+            IDbConnection connection, 
+            CommandDefinition commandDefinition, 
+            Type entityType)
+            => ExecuteDapperQuery<TResult>("QueryAsync", connection, commandDefinition, entityType);
+
+        public static TResult ExecuteDapperQuery<TResult>(
+            IDbConnection connection,
+            CommandDefinition commandDefinition,
+            Type entityType)
+            => ExecuteDapperQuery<TResult>("Query", connection, commandDefinition, entityType);
+
+        public static TResult ExecuteDapperQuery<TResult>(
+            string methodName,
+            IDbConnection connection, 
+            CommandDefinition commandDefinition, 
+            Type entityType)
         {
-            // Get the QueryAsync method using reflection
-            MethodInfo queryAsyncMethod =
-                typeof(IDbConnection).GetMethod("QueryAsync", new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
-                .MakeGenericMethod(entityType)
-                ?? throw new InvalidOperationException("Cannot find dapper method 'QueryAsync'.");
+            try
+            {
+                // Get the Query method using reflection
+                MethodInfo queryAsyncMethod =
+                    typeof(SqlMapper).GetMethod(methodName, new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
+                    .MakeGenericMethod(entityType)
+                    ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
 
-            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
-                ?? throw new InvalidOperationException("Invalid 'TResult'.");
-        }
-
-        public static TResult ExecuteDapperQuery<TResult>(IDbConnection connection, CommandDefinition commandDefinition, Type entityType)
-        {
-            // Get the Query method using reflection
-            MethodInfo queryAsyncMethod =
-                typeof(IDbConnection).GetMethod("Query", new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
-                .MakeGenericMethod(entityType)
-                ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
-
-            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
-                ?? throw new InvalidOperationException("Invalid 'TResult'.");
+                return (TResult?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
+                    ?? throw new InvalidOperationException("Invalid 'TResult'.");
+            }
+            catch (AggregateException e)
+            {
+                throw e.InnerExceptions.First();
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }
