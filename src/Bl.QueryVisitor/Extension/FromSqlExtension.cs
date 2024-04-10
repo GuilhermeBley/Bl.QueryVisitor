@@ -175,7 +175,7 @@ public static class FromSqlExtension
         {
             // Get the QueryAsync method using reflection
             MethodInfo queryAsyncMethod =
-                typeof(IDbConnection).GetMethod("QueryAsync", new[] { typeof(CommandDefinition) })?
+                typeof(IDbConnection).GetMethod("QueryAsync", new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
                 .MakeGenericMethod(entityType)
                 ?? throw new InvalidOperationException("Cannot find dapper method 'QueryAsync'.");
 
@@ -187,7 +187,7 @@ public static class FromSqlExtension
         {
             // Get the QueryAsync method using reflection
             MethodInfo queryAsyncMethod =
-                typeof(IDbConnection).GetMethod("Query", new[] { typeof(CommandDefinition) })?
+                typeof(IDbConnection).GetMethod("Query", new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
                 .MakeGenericMethod(entityType)
                 ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
 
