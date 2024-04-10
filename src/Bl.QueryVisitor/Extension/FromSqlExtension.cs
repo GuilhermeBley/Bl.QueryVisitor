@@ -3,7 +3,6 @@ using Dapper;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Data;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
@@ -64,7 +63,11 @@ public static class FromSqlExtension
         public IQueryProvider Provider => _provider;
 
         public IEnumerator GetEnumerator()
-            => this.Provider.Execute<IEnumerator<TEntity>>(this.Expression);
+        {
+            var enumerable = this.Provider.Execute<IEnumerable<TEntity>>(this.Expression);
+
+            return enumerable.GetEnumerator();
+        }
 
         public string ToQueryString()
         {
@@ -79,7 +82,11 @@ public static class FromSqlExtension
         }
 
         IEnumerator<TEntity> IEnumerable<TEntity>.GetEnumerator()
-            => this.Provider.Execute<IEnumerator<TEntity>>(this.Expression);
+        {
+            var enumerable = this.Provider.Execute<IEnumerable<TEntity>>(this.Expression);
+
+            return enumerable.GetEnumerator();
+        }
     }
 
     private class InternalQueryProvider
@@ -98,15 +105,13 @@ public static class FromSqlExtension
         }
 
         public IQueryable CreateQuery(Expression expression)
-        {
-            throw new NotImplementedException();
-        }
+            => new InternalQueryable<object>(_dbConnection, _commandDefinition, expression);
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
             => new InternalQueryable<TElement>(_dbConnection, _commandDefinition, expression);
 
         public object? Execute(Expression expression)
-            => Execute<IEnumerable<dynamic>>(expression);
+            => Execute<IEnumerable<object>>(expression);
 
         public TResult Execute<TResult>(Expression expression)
         {
@@ -167,6 +172,9 @@ public static class FromSqlExtension
 
             dbArgs.AddDynamicParams(_commandDefinition.Parameters);
 
+            CancellationTokenSource cts = 
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _commandDefinition.CancellationToken);
+
             var newCommand =
                 new CommandDefinition(
                     commandText: completeSql,
@@ -175,7 +183,7 @@ public static class FromSqlExtension
                     commandTimeout: _commandDefinition.CommandTimeout,
                     commandType: _commandDefinition.CommandType,
                     flags: _commandDefinition.Flags,
-                    cancellationToken: _commandDefinition.CancellationToken);
+                    cancellationToken: cts.Token);
 
             return ExecuteDapperQueryAsync<TResult>(_dbConnection, newCommand, resultType);
         }
