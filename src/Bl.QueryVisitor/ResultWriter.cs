@@ -27,7 +27,7 @@ internal static class ResultWriter
         return builder.ToString();
     }
 
-    private static StringBuilder FormatWithAliases(IEnumerable<string> columns, StringBuilder builder, string aliases = "t", char nameSeparator = '`')
+    private static StringBuilder FormatWithAliases(IEnumerable<string> columns, StringBuilder builder, string aliases = "tableasdlkasmd", char nameSeparator = '`')
     {
         aliases = string.Concat(nameSeparator, aliases, nameSeparator);
 
