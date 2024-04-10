@@ -25,6 +25,7 @@ public class SimpleQueryTranslator
     private uint? _skip = null;
     private uint? _take = null;
     private readonly Dictionary<string, object?> _parameters = new();
+    private readonly List<string> _columns = new();
     private int _lastParamId = 1000;
 
     public SimpleQueryTranslator()
@@ -34,6 +35,7 @@ public class SimpleQueryTranslator
     public SimpleQueryTranslatorResult Translate(Expression expression)
     {
         _whereBuilder.Clear();
+        _columns.Clear();
         _orderBy = string.Empty;
         _lastParamId = 1000;
         _parameters.Clear();
@@ -44,6 +46,7 @@ public class SimpleQueryTranslator
 
         return new SimpleQueryTranslatorResult(
             Parameters: _parameters,
+            Columns: _columns,
             HavingSql: NormalizeHaving(),
             OrderBySql: NormalizeOrderBy(),
             LimitSql: NormalizeLimit());
@@ -66,6 +69,18 @@ public class SimpleQueryTranslator
             LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
             this.Visit(lambda.Body);
             return m;
+        }
+        else if (m.Method.Name == "Select")
+        {
+            var selectVisitor = new SelectVisitor();
+
+            var result = selectVisitor.TranslateColumns(m.Arguments[1]);
+
+            _columns.AddRange(result);
+
+            Expression nextExpression = m.Arguments[0];
+
+            return this.Visit(nextExpression);
         }
         else if (m.Method.Name == "Take")
         {

@@ -89,6 +89,55 @@ public class WhereClauseVisitorTest
     }
 
     [Fact]
+    public void Translate_CheckSelect_SuccessColumnsCollected()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Select(model => new { model.Name });
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Single(result.Columns);
+    }
+
+    [Fact]
+    public void Translate_CheckSelectWithOtherExpressions_SuccessColumnsCollected()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id == 1)
+            .OrderBy(model => model.Name)
+            .Skip(100)
+            .Take(100)
+            .Select(model => new { model.Name }); ;
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.NotEmpty(result.HavingSql);
+        Assert.NotEmpty(result.OrderBySql);
+        Assert.NotEmpty(result.LimitSql);
+        Assert.Single(result.Columns);
+    }
+
+    [Fact]
+    public void Translate_CheckSelectWithouNewObject_SuccessColumnsCollected()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Select(model =>  model.Name);
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Single(result.Columns);
+    }
+
+    [Fact]
     public void Translate_CheckEmptyOrder_SuccessEmpty()
     {
         var query = Enumerable.Empty<FakeModel>()
