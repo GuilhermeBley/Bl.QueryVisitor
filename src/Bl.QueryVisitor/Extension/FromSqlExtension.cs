@@ -1,154 +1,198 @@
 ﻿using Bl.QueryVisitor.Visitors;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Dapper;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
+using System.Data;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Bl.QueryVisitor.Extension;
 
 public static class FromSqlExtension
 {
-    public static IQueryable<TEntity> FromSqlRawE<TEntity>(
-        this DbSet<TEntity> dbSet,
-        [NotParameterized] string sql,
-        params object[] parameters)
+    public static IQueryable<TEntity> QueryAsQueryable<TEntity>(
+        this IDbConnection connection,
+        string sql,
+        object? parameters,
+        IDbTransaction? transaction = null,
+        CancellationToken cancellationToken = default)
+        where TEntity : class
+        => QueryAsQueryable<TEntity>(
+            connection,
+            sql,
+            new CommandDefinition(
+                sql,
+                parameters : parameters,
+                transaction: transaction,
+                cancellationToken: cancellationToken));
+
+    public static IQueryable<TEntity> QueryAsQueryable<TEntity>(
+        this IDbConnection connection,
+        CommandDefinition commandDefinition)
         where TEntity : class
     {
-        // TODO: Throw if contains more than one '{having}'
-
-        IQueryable<TEntity>? generatedQueryable = dbSet.FromSqlRaw(sql, parameters);
-        
-        if (!sql.Contains("{having}", StringComparison.OrdinalIgnoreCase))
-            return ((IQueryable)dbSet).Provider.CreateQuery<TEntity>(
-                new MyOwnQueryRootExpression(
-                    asyncQueryProvider: (IAsyncQueryProvider)((IQueryable)dbSet).Provider,
-                    entityType: dbSet.EntityType));
-
-        return generatedQueryable;
+        return new InternalQueryable<TEntity>(connection, commandDefinition);
     }
 
-    // TODO: Set as private
-    public class InternalQueryable<TEntity>
-        : IQueryable<TEntity>
+    private class InternalQueryable<TEntity>
+        : IQueryable<TEntity>,
+        IQueryingEnumerable
     {
-        private readonly IQueryable<TEntity> _efQueryable;
-
+        private readonly IQueryable<TEntity> _queryable;
+        private readonly CommandDefinition _commandDefinition;
         /// <summary>
         /// Provider that improves the expressions changes after execution.
         /// </summary>
         private readonly InternalQueryProvider _provider;
-        private readonly IEntityType _entityType;
-        private readonly IAsyncQueryProvider _asyncProvider;
 
-        public InternalQueryable(IQueryable<TEntity> other, IEntityType entityType)
+        public InternalQueryable(IDbConnection dbConnection, CommandDefinition commandDefinition)
         {
-            _efQueryable = other;
-            _entityType = entityType;
-            _asyncProvider = (IAsyncQueryProvider)other.Provider;
-            _provider = new InternalQueryProvider(other.Provider, entityType);
+            _commandDefinition = commandDefinition;
+            _queryable = Enumerable.Empty<TEntity>().AsQueryable();
+            _provider = new(dbConnection, commandDefinition);
         }
 
-        public Type ElementType => _efQueryable.ElementType;
+        public Type ElementType => _queryable.ElementType;
 
-        public Expression Expression => NormalizeExpression(_efQueryable.Expression);
+        public Expression Expression => _queryable.Expression;
 
         public IQueryProvider Provider => _provider;
 
         public IEnumerator GetEnumerator()
-            => _efQueryable.GetEnumerator();
+            => _queryable.GetEnumerator();
+
+        public string ToQueryString()
+        {
+            var translator = new SimpleQueryTranslator();
+
+            var result = translator.Translate(Expression);
+
+            var completeSql =
+                string.Concat(_commandDefinition.CommandText, result.HavingSql, result.OrderBySql, result.LimitSql);
+
+            return completeSql;
+        }
 
         IEnumerator<TEntity> IEnumerable<TEntity>.GetEnumerator()
-            => _efQueryable.GetEnumerator();
-
-        private Expression NormalizeExpression(Expression expression)
-        {
-            var visitor = new HavingPerformanceImprovedFromSqlExpressionVisitor(
-                _asyncProvider,
-                _entityType);
-
-            return visitor.Visit(expression);
-        }
+            => _queryable.GetEnumerator();
     }
 
-    // TODO: Set as private
-    public class InternalQueryProvider 
+    private class InternalQueryProvider
         : IQueryProvider,
         IAsyncQueryProvider
     {
-        private readonly IEntityType _entityType;
-        private readonly IAsyncQueryProvider _asyncProvider;
+        private readonly IDbConnection _dbConnection;
+        private readonly CommandDefinition _commandDefinition;
 
-        public InternalQueryProvider(IQueryProvider sqlProvider, IEntityType entityType)
+        public InternalQueryProvider(IDbConnection dbConnection, CommandDefinition commandDefinition)
         {
-            _asyncProvider = sqlProvider as IAsyncQueryProvider ?? throw new InvalidOperationException("This is not a 'IAsyncQueryProvider'.");
-            _entityType = entityType;
+            _commandDefinition = commandDefinition;
+            _dbConnection = dbConnection;
         }
 
         public IQueryable CreateQuery(Expression expression)
-            => _asyncProvider.CreateQuery(NormalizeExpression(expression));
+            => Enumerable.Empty<object>().AsQueryable();
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-            => _asyncProvider.CreateQuery<TElement>(NormalizeExpression(expression));
+            => Enumerable.Empty<TElement>().AsQueryable();
 
         public object? Execute(Expression expression)
-        {
-            expression = NormalizeExpression(expression);
-
-            return _asyncProvider.Execute(expression);
-        }
+            => Execute<IEnumerable<dynamic>>(expression);
 
         public TResult Execute<TResult>(Expression expression)
         {
-            expression = NormalizeExpression(expression);
+            if (!typeof(TResult).IsAssignableTo(typeof(IEnumerable)))
+                throw new NotSupportedException("The 'TResult' needs to be an 'IEnumerable'.");
 
-            return _asyncProvider.Execute<TResult>(expression);
+            var resultType = typeof(TResult).GetGenericArguments().FirstOrDefault() ?? typeof(object);
+
+            var translator = new SimpleQueryTranslator();
+
+            var result = translator.Translate(expression);
+
+            var completeSql =
+                string.Concat(_commandDefinition.CommandText, result.HavingSql, result.OrderBySql, result.LimitSql);
+
+            var dbArgs = new DynamicParameters();
+
+            foreach (var parameter in result.Parameters)
+                dbArgs.Add(parameter.Key, parameter.Value);
+
+            dbArgs.AddDynamicParams(_commandDefinition.Parameters);
+
+            var newCommand =
+                new CommandDefinition(
+                    commandText: completeSql,
+                    parameters: dbArgs,
+                    transaction: _commandDefinition.Transaction,
+                    commandTimeout: _commandDefinition.CommandTimeout,
+                    commandType: _commandDefinition.CommandType,
+                    flags: _commandDefinition.Flags,
+                    cancellationToken: _commandDefinition.CancellationToken);
+
+            return ExecuteDapperQuery<TResult>(newCommand, resultType);
         }
 
         public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
         {
-            expression = NormalizeExpression(expression);
+            if (!typeof(TResult).IsAssignableTo(typeof(Task)))
+                throw new NotSupportedException("It's required a 'Task' result.");
 
-            return _asyncProvider.ExecuteAsync<TResult>(expression, cancellationToken);
+            var taskType = typeof(TResult).GetGenericArguments().Single();
+
+            var resultType = taskType.GetGenericArguments()
+                .FirstOrDefault() 
+                ?? typeof(object);
+
+            var translator = new SimpleQueryTranslator();
+
+            var result = translator.Translate(expression);
+
+            var completeSql =
+                string.Concat(_commandDefinition.CommandText, result.HavingSql, result.OrderBySql, result.LimitSql);
+
+            var dbArgs = new DynamicParameters();
+
+            foreach (var parameter in result.Parameters)
+                dbArgs.Add(parameter.Key, parameter.Value);
+
+            dbArgs.AddDynamicParams(_commandDefinition.Parameters);
+
+            var newCommand =
+                new CommandDefinition(
+                    commandText: completeSql,
+                    parameters: dbArgs,
+                    transaction: _commandDefinition.Transaction,
+                    commandTimeout: _commandDefinition.CommandTimeout,
+                    commandType: _commandDefinition.CommandType,
+                    flags: _commandDefinition.Flags,
+                    cancellationToken: _commandDefinition.CancellationToken);
+
+            return ExecuteDapperQueryAsync<TResult>(newCommand, resultType);
         }
 
-        private Expression NormalizeExpression(Expression expression)
+        public static TResult ExecuteDapperQueryAsync<TResult>(CommandDefinition commandDefinition, Type entityType)
         {
-            var visitor = new HavingPerformanceImprovedFromSqlExpressionVisitor(
-                _asyncProvider,
-                _entityType);
+            // Get the QueryAsync method using reflection
+            MethodInfo queryAsyncMethod =
+                typeof(IDbConnection).GetMethod("QueryAsync", new[] { typeof(CommandDefinition) })?
+                .MakeGenericMethod(entityType)
+                ?? throw new InvalidOperationException("Cannot find dapper method 'QueryAsync'.");
 
-            return visitor.Visit(expression);
-        }
-    }
-
-    public class MyOwnQueryRootExpression : QueryRootExpression
-    {
-        private readonly IAsyncQueryProvider asyncQueryProvider;
-        private readonly IEntityType entityType;
-
-        public MyOwnQueryRootExpression(
-            IAsyncQueryProvider asyncQueryProvider, 
-            IEntityType entityType) 
-            : base(asyncQueryProvider, entityType)
-        {
-            this.asyncQueryProvider = asyncQueryProvider;
-            this.entityType = entityType;
+            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { commandDefinition })
+                ?? throw new InvalidOperationException("Invalid 'TResult'.");
         }
 
-        protected override Expression VisitChildren(ExpressionVisitor visitor)
+        public static TResult ExecuteDapperQuery<TResult>(CommandDefinition commandDefinition, Type entityType)
         {
-            var havingVisitor = new HavingPerformanceImprovedFromSqlExpressionVisitor(
-                asyncQueryProvider,
-                entityType);
-            
-            return havingVisitor.Visit(base.VisitChildren(visitor));
-        }
+            // Get the QueryAsync method using reflection
+            MethodInfo queryAsyncMethod =
+                typeof(IDbConnection).GetMethod("Query", new[] { typeof(CommandDefinition) })?
+                .MakeGenericMethod(entityType)
+                ?? throw new InvalidOperationException("Cannot find dapper method 'QueryAsync'.");
 
-        protected override void Print(ExpressionPrinter expressionPrinter)
-        {
-            base.Print(expressionPrinter);
+            return (TResult?)queryAsyncMethod.Invoke(null, new object[] { commandDefinition })
+                ?? throw new InvalidOperationException("Invalid 'TResult'.");
         }
     }
 }

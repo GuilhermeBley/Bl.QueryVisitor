@@ -1,7 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
-using Bl.QueryVisitor.Extension;
-
 namespace Bl.QueryVisitor.Visitors.Test;
 
 public class WhereClauseVisitorTest
