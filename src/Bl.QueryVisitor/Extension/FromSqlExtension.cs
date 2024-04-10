@@ -68,18 +68,6 @@ public static class FromSqlExtension
             return enumerable.GetEnumerator();
         }
 
-        public string ToQueryString()
-        {
-            var translator = new SimpleQueryTranslator();
-
-            var result = translator.Translate(Expression);
-
-            var completeSql =
-                string.Concat(_commandDefinition.CommandText, result.HavingSql, result.OrderBySql, result.LimitSql);
-
-            return completeSql;
-        }
-
         IEnumerator<TEntity> IEnumerable<TEntity>.GetEnumerator()
         {
             var enumerable = this.Provider.Execute<IEnumerable<TEntity>>(this.Expression);
@@ -124,8 +112,7 @@ public static class FromSqlExtension
 
             var result = translator.Translate(expression);
 
-            var completeSql =
-                string.Concat(_commandDefinition.CommandText, result.HavingSql, result.OrderBySql, result.LimitSql);
+            var completeSql = ResultWriter.WriteSql(_commandDefinition.CommandText, result);
 
             var dbArgs = new DynamicParameters();
 
@@ -164,8 +151,7 @@ public static class FromSqlExtension
 
             var result = translator.Translate(expression);
 
-            var completeSql =
-                string.Concat(_commandDefinition.CommandText, result.HavingSql, result.OrderBySql, result.LimitSql);
+            var completeSql = ResultWriter.WriteSql(_commandDefinition.CommandText, result);
 
             var dbArgs = new DynamicParameters();
 
