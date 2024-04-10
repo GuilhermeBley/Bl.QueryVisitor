@@ -5,29 +5,27 @@ using System.Collections;
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Xml.Linq;
 
 namespace Bl.QueryVisitor.Extension;
 
 public static class FromSqlExtension
 {
-    public static IQueryable<TEntity> QueryAsQueryable<TEntity>(
+    public static IFromSqlQueryable<TEntity> QueryAsQueryable<TEntity>(
         this IDbConnection connection,
         string sql,
-        object? parameters,
+        object? parameters = null,
         IDbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
         where TEntity : class
         => QueryAsQueryable<TEntity>(
             connection,
-            sql,
-            new CommandDefinition(
+            commandDefinition: new CommandDefinition(
                 sql,
                 parameters : parameters,
                 transaction: transaction,
                 cancellationToken: cancellationToken));
 
-    public static IQueryable<TEntity> QueryAsQueryable<TEntity>(
+    public static IFromSqlQueryable<TEntity> QueryAsQueryable<TEntity>(
         this IDbConnection connection,
         CommandDefinition commandDefinition)
         where TEntity : class
@@ -36,8 +34,7 @@ public static class FromSqlExtension
     }
 
     private class InternalQueryable<TEntity>
-        : IQueryable<TEntity>,
-        IQueryingEnumerable
+        : IFromSqlQueryable<TEntity>
     {
         private readonly CommandDefinition _commandDefinition;
         /// <summary>
@@ -60,7 +57,9 @@ public static class FromSqlExtension
 
         public Expression Expression => _expression;
 
-        public IQueryProvider Provider => _provider;
+        public IAsyncQueryProvider Provider => _provider;
+
+        IQueryProvider IQueryable.Provider => _provider;
 
         public IEnumerator GetEnumerator()
         {
@@ -90,8 +89,7 @@ public static class FromSqlExtension
     }
 
     private class InternalQueryProvider
-        : IQueryProvider,
-        IAsyncQueryProvider
+        : IFromSqlQueryProvider
     {
         private readonly IDbConnection _dbConnection;
         private readonly CommandDefinition _commandDefinition;
@@ -115,10 +113,12 @@ public static class FromSqlExtension
 
         public TResult Execute<TResult>(Expression expression)
         {
-            if (!typeof(TResult).IsAssignableTo(typeof(IEnumerable)))
+            var tResultType = typeof(TResult);
+
+            if (!tResultType.IsAssignableTo(typeof(IEnumerable)))
                 throw new NotSupportedException("The 'TResult' needs to be an 'IEnumerable'.");
 
-            var resultType = typeof(TResult).GetGenericArguments().FirstOrDefault() ?? typeof(object);
+            var resultType = tResultType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
 
             var translator = new SimpleQueryTranslator();
 
