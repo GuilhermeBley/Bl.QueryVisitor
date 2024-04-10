@@ -1,5 +1,8 @@
 using Bl.QueryVisitor.Extension;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using MySql.Data.MySqlClient;
+using System.Collections.Generic;
 using System.Data;
 
 namespace Bl.QueryVisitor.MySql.Test.Test;
@@ -11,12 +14,48 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var result = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+        var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .Where(model => model.Id == 1);
 
-        var executedResult = result.Provider.Execute(result.Expression);
+        var executedResult = queryable.Provider.Execute(queryable.Expression);
 
         Assert.NotNull(executedResult);
+    }
+
+    [Fact]
+    public void Execute_TryExecuteWhereWithParameters_Success()
+    {
+        using var connection = CreateConnection();
+
+        var queryable = connection.QueryAsQueryable<FakeModel>(
+            "SELECT * FROM `queryable-test`.FakeModel WHERE Name = @Name",
+            parameters: new
+            {
+                Name = "Name"
+            })
+            .Where(model => model.Id == 1);
+
+        var executedResult = queryable.Provider.Execute(queryable.Expression);
+
+        Assert.NotNull(executedResult);
+    }
+
+    [Fact]
+    public void Execute_CheckeWhereWithParameters_SuccessDoubleParams()
+    {
+        using var connection = CreateConnection();
+
+        var queryable = connection.QueryAsQueryable<FakeModel>(
+            "SELECT * FROM `queryable-test`.FakeModel WHERE Name = @Name",
+            parameters: new
+            {
+                Name = "Name"
+            })
+            .Where(model => model.Id == 1);
+
+        var queryString = queryable.ToQueryString();
+
+        Assert.Equal(2, queryString.Where(c => c == '@').Count());
     }
 
     [Fact]
@@ -24,11 +63,11 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var result = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+        var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .OrderByDescending(model => model.Id)
             .ThenBy(model => model.Name);
 
-        var executedResult = result.Provider.Execute(result.Expression);
+        var executedResult = queryable.Provider.Execute(queryable.Expression);
 
         Assert.NotNull(executedResult);
     }
@@ -43,6 +82,22 @@ public class FromSqlQueryableTest
             .Skip(1);
 
         Assert.NotEmpty(queryable);
+    }
+
+    [Fact]
+    public async void ExecuteAsync_TryExecuteLimitWithProvider_Success()
+    {
+        using var connection = CreateConnection();
+
+        var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+            .Take(1)
+            .Skip(1);
+
+        var asyncProvider = (IAsyncQueryProvider)queryable.Provider;
+
+        var results = await asyncProvider.ExecuteAsync<Task<IEnumerable<FakeModel>>>(queryable.Expression);
+
+        Assert.NotEmpty(results);
     }
 
     private static IDbConnection CreateConnection()

@@ -143,8 +143,10 @@ public static class FromSqlExtension
                     commandType: _commandDefinition.CommandType,
                     flags: _commandDefinition.Flags,
                     cancellationToken: _commandDefinition.CancellationToken);
+            
+            var entities = ExecuteDapperQuery<TResult>(_dbConnection, newCommand, resultType);
 
-            return ExecuteDapperQuery<TResult>(_dbConnection, newCommand, resultType);
+            return (TResult)CreateEnumerable(resultType, completeSql, entities);
         }
 
         public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
@@ -210,10 +212,10 @@ public static class FromSqlExtension
             {
                 // Get the Query method using reflection
                 MethodInfo queryAsyncMethod =
-                    typeof(SqlMapper).GetMethod(methodName, new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
-                    .MakeGenericMethod(entityType)
+                    typeof(SqlMapper).GetMethod(methodName, genericParameterCount: 1, new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
+                        .MakeGenericMethod(entityType)
                     ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
-
+                
                 return (TResult?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
                     ?? throw new InvalidOperationException("Invalid 'TResult'.");
             }
@@ -225,6 +227,17 @@ public static class FromSqlExtension
             {
                 throw;
             }
+        }
+
+        public static IEnumerable CreateEnumerable(Type entityType, string queryString, object? entities)
+        {
+            Type listType = typeof(InternalQueringEnumerable<>).MakeGenericType(entityType);
+
+            // Create an instance of the list
+            IEnumerable listInstance = (IEnumerable?)Activator.CreateInstance(listType, queryString, entities)
+                ?? throw new InvalidOperationException("Failed to create enumerable.");
+
+            return listInstance;
         }
     }
 }
