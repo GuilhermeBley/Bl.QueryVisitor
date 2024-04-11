@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Xml.Linq;
 
 namespace Bl.QueryVisitor.Visitors;
 
@@ -74,7 +75,9 @@ public class SimpleQueryTranslator
         {
             var selectVisitor = new SelectVisitor();
 
-            var result = selectVisitor.TranslateColumns(m.Arguments[1]);
+            var stripedQuoteSelect = StripQuotes(m.Arguments[1]);
+
+            var result = selectVisitor.TranslateColumns(stripedQuoteSelect);
 
             _columns.AddRange(result);
 
@@ -301,7 +304,12 @@ public class SimpleQueryTranslator
 
     private bool ParseTakeExpression(MethodCallExpression expression)
     {
-        ConstantExpression sizeExpression = (ConstantExpression)expression.Arguments[1];
+        ConstantExpression sizeExpression;
+        
+        if (expression.Arguments[1] is ConstantExpression)
+            sizeExpression = (ConstantExpression)expression.Arguments[1];
+        else
+            sizeExpression = ConvertToConstant(expression.Arguments[1]);
 
         uint size;
         if (uint.TryParse(sizeExpression.Value?.ToString(), out size))
@@ -355,5 +363,17 @@ public class SimpleQueryTranslator
             return string.Empty;
 
         return string.Concat('\n', "ORDER BY ", _orderBy);
+    }
+
+    private static ConstantExpression ConvertToConstant(Expression node)
+    {
+        var convertedExp = Expression.Convert(node, typeof(object));
+
+        var instantiator = Expression
+            .Lambda<Func<object>>(convertedExp)
+            .Compile();
+        var res = instantiator();
+
+        return Expression.Constant(res);
     }
 }

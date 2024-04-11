@@ -31,7 +31,7 @@ internal static class ResultWriter
     {
         aliases = string.Concat(nameSeparator, aliases, nameSeparator);
 
-        columns = columns.Select(column => string.Concat(aliases, nameSeparator, column, nameSeparator));
+        columns = columns.Select(column => string.Concat(aliases, '.', nameSeparator, column, nameSeparator));
 
         // Inserting before SQL command already added in the builder.
         builder.Insert(
