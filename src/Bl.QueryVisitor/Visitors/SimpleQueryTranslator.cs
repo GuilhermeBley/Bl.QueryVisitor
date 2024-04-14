@@ -354,7 +354,10 @@ public class SimpleQueryTranslator
 
         var skip = _skip ?? 0;
 
-        return string.Concat('\n', "LIMIT ", _take, " OFFSET ", _skip);
+        if (skip == 0)
+            return string.Concat('\n', "LIMIT ", take);
+
+        return string.Concat('\n', "LIMIT ", take, " OFFSET ", skip);
     }
 
     private string NormalizeOrderBy()

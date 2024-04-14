@@ -1,6 +1,6 @@
 namespace Bl.QueryVisitor.Visitors.Test;
 
-public class WhereClauseVisitorTest
+public class SimpleQueryTranslator
 {
     [Fact]
     public void Translate_TryGetWhereConstClauses_Success()
@@ -12,7 +12,7 @@ public class WhereClauseVisitorTest
             .Skip(100)
             .Take(100);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -31,7 +31,7 @@ public class WhereClauseVisitorTest
             .Skip(100)
             .Take(100);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var queryString = visitor.Translate(query.Expression).HavingSql;
 
@@ -48,7 +48,7 @@ public class WhereClauseVisitorTest
             .Skip(100)
             .Take(100);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var queryString = visitor.Translate(query.Expression).HavingSql;
 
@@ -65,7 +65,7 @@ public class WhereClauseVisitorTest
             .Skip(100)
             .Take(100);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -81,7 +81,7 @@ public class WhereClauseVisitorTest
             .Skip(100)
             .Take(100);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -95,7 +95,7 @@ public class WhereClauseVisitorTest
             .AsQueryable()
             .Select(model => new { model.Name });
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -113,7 +113,7 @@ public class WhereClauseVisitorTest
             .Take(100)
             .Select(model => new { model.Name }); ;
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -130,7 +130,7 @@ public class WhereClauseVisitorTest
             .AsQueryable()
             .Select(model =>  model.Name);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -146,7 +146,7 @@ public class WhereClauseVisitorTest
             .Skip(100)
             .Take(100);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -161,7 +161,7 @@ public class WhereClauseVisitorTest
             .Where(model => model.Id == 1)
             .OrderBy(model => model.Name);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
@@ -178,10 +178,41 @@ public class WhereClauseVisitorTest
             .ThenBy(model => model.Id)
             .ThenByDescending(model => model.InsertedAt);
 
-        var visitor = new SimpleQueryTranslator();
+        var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
 
         Assert.Equal("\nORDER BY Name ASC, Id ASC, InsertedAt DESC", result.OrderBySql);
+    }
+
+    [Fact]
+    public void Translate_CheckLimitText_SuccessLimitFound()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id == 1)
+            .Take(1);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nLIMIT 1", result.LimitSql);
+    }
+
+    [Fact]
+    public void Translate_CheckLimitOffsetText_SuccessLimitFound()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id == 1)
+            .Take(1)
+            .Skip(1);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nLIMIT 1 OFFSET 1", result.LimitSql);
     }
 }
