@@ -186,6 +186,22 @@ public class SimpleQueryTranslator
     }
 
     [Fact]
+    public void Translate_CheckDoubleOrdering_FailedToExecuteDoubleOrderByNotSupported()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id == 1)
+            .OrderBy(model => model.Name)
+            .OrderBy(model => model.Id);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        Action act = () => visitor.Translate(query.Expression);
+
+        Assert.ThrowsAny<ArgumentException>(act);
+    }
+
+    [Fact]
     public void Translate_CheckLimitText_SuccessLimitFound()
     {
         var query = Enumerable.Empty<FakeModel>()

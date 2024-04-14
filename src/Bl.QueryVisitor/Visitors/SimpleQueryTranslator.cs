@@ -23,6 +23,7 @@ public class SimpleQueryTranslator
     /// Storage all orderers, example "Field ASC, Field2 DESC".
     /// </summary>
     private string _orderBy = string.Empty;
+    private bool _orderByStarted = false;
     private uint? _skip = null;
     private uint? _take = null;
     private readonly Dictionary<string, object?> _parameters = new();
@@ -42,7 +43,9 @@ public class SimpleQueryTranslator
         _parameters.Clear();
         _skip = null;
         _take = null;
-        
+        _orderByStarted = false;
+
+
         this.Visit(expression);
 
         return new SimpleQueryTranslatorResult(
@@ -101,7 +104,7 @@ public class SimpleQueryTranslator
                 return this.Visit(nextExpression);
             }
         }
-        else if (m.Method.Name == "OrderBy" || m.Method.Name == "ThenBy")
+        else if (m.Method.Name == "ThenBy")
         {
             if (this.ParseOrderByExpression(m, "ASC"))
             {
@@ -109,11 +112,37 @@ public class SimpleQueryTranslator
                 return this.Visit(nextExpression);
             }
         }
-        else if (m.Method.Name == "OrderByDescending" || m.Method.Name == "ThenByDescending")
+        else if (m.Method.Name == "OrderBy")
+        {
+            ThrowIfOrderByAlreadyStarted();
+
+            if (this.ParseOrderByExpression(m, "ASC"))
+            {
+                Expression nextExpression = m.Arguments[0];
+
+                _orderByStarted = true;
+
+                return this.Visit(nextExpression);
+            }
+        }
+        else if (m.Method.Name == "ThenByDescending")
         {
             if (this.ParseOrderByExpression(m, "DESC"))
             {
                 Expression nextExpression = m.Arguments[0];
+                return this.Visit(nextExpression);
+            }
+        }
+        else if (m.Method.Name == "OrderByDescending")
+        {
+            ThrowIfOrderByAlreadyStarted();
+
+            if (this.ParseOrderByExpression(m, "DESC"))
+            {
+                Expression nextExpression = m.Arguments[0];
+
+                _orderByStarted = true;
+
                 return this.Visit(nextExpression);
             }
         }
@@ -287,14 +316,10 @@ public class SimpleQueryTranslator
         MemberExpression? body = lambdaExpression.Body as MemberExpression;
         if (body != null)
         {
-            if (string.IsNullOrEmpty(_orderBy))
-            {
+            if (string.IsNullOrWhiteSpace(_orderBy))
                 _orderBy = string.Format("{0} {1}", body.Member.Name, order);
-            }
             else
-            {
                 _orderBy = string.Format("{0} {1}, {2}", body.Member.Name, order, _orderBy);
-            }
 
             return true;
         }
@@ -366,6 +391,12 @@ public class SimpleQueryTranslator
             return string.Empty;
 
         return string.Concat('\n', "ORDER BY ", _orderBy);
+    }
+
+    private void ThrowIfOrderByAlreadyStarted()
+    {
+        if (_orderByStarted)
+            throw new ArgumentException("It's not supported double 'OrderBy' or 'OrderByDescending' in this queryable, you must use 'ThenBy' or 'ThenByDescending' to this operation.", "OrderBy");
     }
 
     private static ConstantExpression ConvertToConstant(Expression node)
