@@ -186,7 +186,25 @@ public class SimpleQueryTranslator
     }
 
     [Fact]
-    public void Translate_CheckDoubleOrdering_FailedToExecuteDoubleOrderByNotSupported()
+    public void Translate_CheckOrderByWithThenBy_SuccessThenBy()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id == 1)
+            .OrderBy(model => model.Name)
+            .ThenByDescending(model => model.Id)
+            .OrderByDescending(model => model.InsertedAt)
+            .ThenBy(model => model.Id);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nORDER BY InsertedAt DESC, Id ASC, Name ASC, Id DESC", result.OrderBySql);
+    }
+
+    [Fact]
+    public void Translate_CheckDoubleOrdering_SuccessLastOneAtFirstPlace()
     {
         var query = Enumerable.Empty<FakeModel>()
             .AsQueryable()
@@ -196,9 +214,9 @@ public class SimpleQueryTranslator
 
         var visitor = new Visitors.SimpleQueryTranslator();
 
-        Action act = () => visitor.Translate(query.Expression);
+        var translation = visitor.Translate(query.Expression);
 
-        Assert.ThrowsAny<ArgumentException>(act);
+        Assert.Equal("\nORDER BY Id ASC, Name ASC", translation.OrderBySql);
     }
 
     [Fact]

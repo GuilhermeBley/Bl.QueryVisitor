@@ -38,7 +38,6 @@ public static class FromSqlExtension
     private class InternalQueryable<TEntity>
         : IFromSqlQueryable<TEntity>
     {
-        private readonly CommandDefinition _commandDefinition;
         /// <summary>
         /// Provider that improves the expressions changes after execution.
         /// </summary>
@@ -50,7 +49,6 @@ public static class FromSqlExtension
             CommandDefinition commandDefinition,
             Expression? expression = null)
         {
-            _commandDefinition = commandDefinition;
             _provider = new(dbConnection, commandDefinition);
             _expression = expression ?? Expression.Constant(this);
         }
