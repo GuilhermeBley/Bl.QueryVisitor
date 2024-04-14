@@ -1,8 +1,6 @@
-﻿using System.Diagnostics.Metrics;
+﻿using System.Collections.Immutable;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Text;
-using System.Xml.Linq;
 
 namespace Bl.QueryVisitor.Visitors;
 
@@ -23,10 +21,26 @@ public class SimpleQueryTranslator
     private uint? _take = null;
     private readonly Dictionary<string, object?> _parameters = new();
     private readonly List<string> _columns = new();
+
+    /// <summary>
+    /// These items are used to replace the 'Property.Name', because it can improve by using index 
+    /// </summary>
+    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
     private int _lastParamId = 1000;
 
     public SimpleQueryTranslator()
+        : this(Enumerable.Empty<KeyValuePair<string, string>>())
     {
+    }
+
+    public SimpleQueryTranslator(IEnumerable<KeyValuePair<string, string>> renamedProperties)
+        : this(renamedPropertiesDictionary: renamedProperties.ToDictionary(item => item.Key, item => item.Value))
+    {
+    }
+
+    public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary)
+    {
+        _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -38,7 +52,7 @@ public class SimpleQueryTranslator
         _skip = null;
         _take = null;
 
-        var orderResult = new OrderByExpressionVisitor().Translate(expression);
+        var orderResult = new OrderByExpressionVisitor(_renamedProperties).Translate(expression);
 
         this.Visit(orderResult.Others);
 
@@ -236,7 +250,12 @@ public class SimpleQueryTranslator
     {
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
-            _whereBuilder.Append(m.Member.Name);
+            var columnName = _renamedProperties
+                .TryGetValue(m.Member.Name, out var renamedValue)
+                    ? renamedValue 
+                    : m.Member.Name;
+
+            _whereBuilder.Append(columnName);
             return m;
         }
         if (m.Expression is ConstantExpression constant)

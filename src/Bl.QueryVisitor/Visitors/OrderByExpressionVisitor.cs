@@ -9,6 +9,16 @@ namespace Bl.QueryVisitor.Visitors;
 internal class OrderByExpressionVisitor
     : ExpressionVisitor
 {
+    /// <summary>
+    /// These items are used to replace the 'Property.Name', because it can improve by using index 
+    /// </summary>
+    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+
+    public OrderByExpressionVisitor(IReadOnlyDictionary<string, string> renamedProperties)
+    {
+        _renamedProperties = renamedProperties;
+    }
+
     private readonly List<MethodCallExpression> _orderCalls = new();
 
     public Result Translate(Expression? node)
@@ -120,7 +130,7 @@ internal class OrderByExpressionVisitor
         return string.Join(", ", orders);
     }
 
-    private static void ParseOrderByExpressionToBuilder(MethodCallExpression expression, bool isAsc, bool reorder, StringBuilder builder)
+    private void ParseOrderByExpressionToBuilder(MethodCallExpression expression, bool isAsc, bool reorder, StringBuilder builder)
     {
         var order = isAsc ? "ASC" : "DESC";
 
@@ -132,12 +142,17 @@ internal class OrderByExpressionVisitor
         {
             var newOrder = string.Empty;
 
+            var columnName = _renamedProperties
+               .TryGetValue(body.Member.Name, out var renamedValue)
+                   ? renamedValue
+                   : body.Member.Name;
+
             if (builder.Length == 0)
-                newOrder = string.Format("{0} {1}", body.Member.Name, order);
+                newOrder = string.Format("{0} {1}", columnName, order);
             else if (reorder)
-                newOrder = string.Format("{0} {1}, {2}", body.Member.Name, order, builder.ToString());
+                newOrder = string.Format("{0} {1}, {2}", columnName, order, builder.ToString());
             else
-                newOrder = string.Format("{0}, {1} {2}", builder.ToString(), body.Member.Name, order);
+                newOrder = string.Format("{0}, {1} {2}", builder.ToString(), columnName, order);
 
             builder.Clear();
 

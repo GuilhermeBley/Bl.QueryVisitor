@@ -35,6 +35,35 @@ public static class FromSqlExtension
         return new InternalQueryable<TEntity>(connection, commandDefinition);
     }
 
+    public static IQueryable<TEntity> SetColumnName<TEntity>(
+        this IQueryable<TEntity> current,
+        Expression<Func<TEntity>> property,
+        string columnName)
+    {
+        if (current is InternalQueryable<TEntity> internalQueryable)
+        {
+            var memberName = GetMemberName(property);
+
+            if (internalQueryable.RenamedProperties.ContainsKey(memberName))
+                internalQueryable.RenamedProperties.Remove(memberName);
+
+            internalQueryable.RenamedProperties.Add(memberName, columnName);
+        }
+
+        return current;
+    }
+
+    private static string GetMemberName<T>(Expression<Func<T>> expression)
+    {
+        MemberExpression? memberExpression = expression.Body as MemberExpression;
+        if (memberExpression == null)
+        {
+            throw new ArgumentException("Expression is not a member expression.");
+        }
+
+        return memberExpression.Member.Name;
+    }
+
     private class InternalQueryable<TEntity>
         : IFromSqlQueryable<TEntity>
     {
@@ -44,12 +73,19 @@ public static class FromSqlExtension
         private readonly InternalQueryProvider _provider;
         private readonly Expression _expression;
 
+        /// <summary>
+        /// These items are used to replace the 'Property.Name', because it can improve by using index 
+        /// </summary>
+        public readonly Dictionary<string, string> RenamedProperties;
+
         public InternalQueryable(
             IDbConnection dbConnection, 
             CommandDefinition commandDefinition,
-            Expression? expression = null)
+            Expression? expression = null,
+            Dictionary<string, string>? renamedProperties = null)
         {
-            _provider = new(dbConnection, commandDefinition);
+            RenamedProperties = renamedProperties ?? new();
+            _provider = new(dbConnection, commandDefinition, RenamedProperties);
             _expression = expression ?? Expression.Constant(this);
         }
 
@@ -81,20 +117,26 @@ public static class FromSqlExtension
     {
         private readonly IDbConnection _dbConnection;
         private readonly CommandDefinition _commandDefinition;
+        /// <summary>
+        /// These items are used to replace the 'Property.Name', because it can improve by using index 
+        /// </summary>
+        private readonly Dictionary<string, string> _renamedProperties;
 
         public InternalQueryProvider(
-            IDbConnection dbConnection, 
-            CommandDefinition commandDefinition)
+            IDbConnection dbConnection,
+            CommandDefinition commandDefinition,
+            Dictionary<string, string> renamedProperties)
         {
             _commandDefinition = commandDefinition;
             _dbConnection = dbConnection;
+            _renamedProperties = renamedProperties;
         }
 
         public IQueryable CreateQuery(Expression expression)
-            => new InternalQueryable<object>(_dbConnection, _commandDefinition, expression);
+            => new InternalQueryable<object>(_dbConnection, _commandDefinition, expression, _renamedProperties);
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-            => new InternalQueryable<TElement>(_dbConnection, _commandDefinition, expression);
+            => new InternalQueryable<TElement>(_dbConnection, _commandDefinition, expression, _renamedProperties);
 
         public object? Execute(Expression expression)
             => Execute<IEnumerable<object>>(expression);
