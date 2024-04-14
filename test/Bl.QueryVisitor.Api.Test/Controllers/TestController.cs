@@ -1,6 +1,5 @@
-using Bl.QueryVisitord.Extension;
+using Bl.QueryVisitor.Extension;
 using Dapper;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
 using Microsoft.Extensions.Options;

@@ -1,6 +1,4 @@
-﻿using Bl.QueryVisitor;
-using Bl.QueryVisitor.Extension;
-using Bl.QueryVisitor.Visitors;
+﻿using Bl.QueryVisitor.Visitors;
 using Dapper;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
@@ -8,7 +6,7 @@ using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Bl.QueryVisitord.Extension;
+namespace Bl.QueryVisitor.Extension;
 
 public static class FromSqlExtension
 {
