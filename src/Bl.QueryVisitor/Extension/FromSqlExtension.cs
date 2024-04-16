@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Data;
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -33,9 +34,9 @@ public static class FromSqlExtension
         return new InternalQueryable<TEntity>(connection, commandDefinition);
     }
 
-    public static IQueryable<TEntity> SetColumnName<TEntity>(
+    public static IQueryable<TEntity> SetColumnName<TEntity, TIn>(
         this IQueryable<TEntity> current,
-        Expression<Func<TEntity>> property,
+        Expression<Func<TEntity, TIn>> property,
         string columnName)
     {
         if (current is InternalQueryable<TEntity> internalQueryable)
@@ -51,7 +52,7 @@ public static class FromSqlExtension
         return current;
     }
 
-    private static string GetMemberName<T>(Expression<Func<T>> expression)
+    private static string GetMemberName<T, TIn>(Expression<Func<T, TIn>> expression)
     {
         MemberExpression? memberExpression = expression.Body as MemberExpression;
         if (memberExpression == null)
@@ -148,7 +149,7 @@ public static class FromSqlExtension
 
             var resultType = tResultType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
 
-            var translator = new SimpleQueryTranslator();
+            var translator = new SimpleQueryTranslator(_renamedProperties);
 
             var result = translator.Translate(expression);
 
@@ -187,7 +188,7 @@ public static class FromSqlExtension
                 .FirstOrDefault() 
                 ?? typeof(object);
 
-            var translator = new SimpleQueryTranslator();
+            var translator = new SimpleQueryTranslator(_renamedProperties);
 
             var result = translator.Translate(expression);
 
@@ -255,7 +256,10 @@ public static class FromSqlExtension
             }
         }
 
-        public static IEnumerable CreateEnumerable(Type entityType, string queryString, object? entities)
+        public static IEnumerable CreateEnumerable(
+            Type entityType, 
+            string queryString, 
+            object? entities)
         {
             Type listType = typeof(InternalQueringEnumerable<>).MakeGenericType(entityType);
 

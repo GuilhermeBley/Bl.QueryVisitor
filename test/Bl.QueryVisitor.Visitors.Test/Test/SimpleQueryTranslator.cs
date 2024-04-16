@@ -1,3 +1,7 @@
+using Bl.QueryVisitor.Extension;
+using Dapper;
+using Microsoft.EntityFrameworkCore;
+
 namespace Bl.QueryVisitor.Visitors.Test;
 
 public class SimpleQueryTranslator
@@ -248,5 +252,41 @@ public class SimpleQueryTranslator
         var result = visitor.Translate(query.Expression);
 
         Assert.Equal("\nLIMIT 1 OFFSET 1", result.LimitSql);
+    }
+
+    [Fact]
+    public void Translate_CheckSetColumnNameOnWhere_SuccessWhereColumnNameEdited()
+    {
+        const string renamedColumn = "newName";
+
+        var query = FakeConnection.Default
+            .QueryAsQueryable<FakeModel>(new CommandDefinition())
+            .Where(model => model.Name == "name")
+            .SetColumnName(model => model.Name, renamedColumn)
+            .Skip(1);
+
+        var result = query.ToQueryString();
+
+        Assert.Contains(renamedColumn, result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Translate_CheckSetColumnNameOnOrderBy_SuccessWhereColumnNameEdited()
+    {
+        const string renamedColumnName = "newName";
+        const string renamedColumnId = "newId";
+
+        var query = FakeConnection.Default
+            .QueryAsQueryable<FakeModel>(new CommandDefinition())
+            .OrderBy(model => model.Name)
+            .ThenBy(model => model.Id)
+            .SetColumnName(model => model.Name, renamedColumnName)
+            .SetColumnName(model => model.Id, renamedColumnId)
+            .Skip(1);
+
+        var result = query.ToQueryString();
+
+        Assert.Contains(renamedColumnName, result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(renamedColumnId, result, StringComparison.OrdinalIgnoreCase);
     }
 }

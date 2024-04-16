@@ -140,7 +140,7 @@ internal class OrderByExpressionVisitor
         MemberExpression? body = lambdaExpression.Body as MemberExpression;
         if (body != null)
         {
-            var newOrder = string.Empty;
+            string newOrder;
 
             var columnName = _renamedProperties
                .TryGetValue(body.Member.Name, out var renamedValue)

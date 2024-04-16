@@ -5,11 +5,11 @@ namespace Bl.QueryVisitor;
 
 internal static class ResultWriter
 {
-    public static string WriteSql(string sql, SimpleQueryTranslatorResult result)
+    public static string WriteSql(string? sql, SimpleQueryTranslatorResult result)
     {
         var builder = new StringBuilder();
 
-        sql = sql.Trim(' ', '\n', ';');
+        sql = sql?.Trim(' ', '\n', ';') ?? string.Empty;
 
         builder.Append(sql);
         
