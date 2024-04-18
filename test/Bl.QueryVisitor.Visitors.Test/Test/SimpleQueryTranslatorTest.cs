@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bl.QueryVisitor.Visitors.Test;
 
-public class SimpleQueryTranslator
+public class SimpleQueryTranslatorTest
 {
     [Fact]
     public void Translate_TryGetWhereConstClauses_Success()
@@ -288,5 +288,23 @@ public class SimpleQueryTranslator
 
         Assert.Contains(renamedColumnName, result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(renamedColumnId, result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Translate_CheckSelectDistinctTypes_SuccesTypesCollectedButObject()
+    {
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Select(c => new { c.MyGuid, c.MyObj, c.DateTimeOffset });
+
+        Dapper.SqlMapper.SetTypeMap(typeof(Guid), null);
+
+        var translator = new Visitors.SimpleQueryTranslator();
+
+        var result = translator.Translate(query.Expression);
+
+        Assert.Equal(
+            new[] { nameof(FakeComplexModel.MyGuid), nameof(FakeComplexModel.DateTimeOffset) },
+            result.Columns);
     }
 }

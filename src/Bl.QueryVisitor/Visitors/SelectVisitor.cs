@@ -21,7 +21,9 @@ internal class SelectVisitor : ExpressionVisitor
 
     protected override Expression VisitMember(MemberExpression node)
     {
-        if (Type.GetTypeCode(node.Type) == TypeCode.Object)
+        var containsType = Dapper.SqlMapper.GetTypeMap(node.Type) is not null;
+
+        if (!containsType)
             return base.VisitMember(node);
 
         _columns.Add(node.Member.Name);
