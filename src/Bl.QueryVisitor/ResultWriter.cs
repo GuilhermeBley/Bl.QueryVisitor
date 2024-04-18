@@ -27,9 +27,15 @@ internal static class ResultWriter
         return builder.ToString();
     }
 
-    private static StringBuilder FormatWithAliases(IEnumerable<string> columns, StringBuilder builder, string aliases = "tableasdlkasmd", char nameSeparator = '`')
+    private static StringBuilder FormatWithAliases(
+        IEnumerable<string> columns, 
+        StringBuilder builder, 
+        char nameSeparator = '`')
     {
-        aliases = string.Concat(nameSeparator, aliases, nameSeparator);
+        var aliases = GetUniqueAliases(
+            sql: builder.ToString(),
+            aliases: "t",
+            nameSeparator: nameSeparator);
 
         columns = columns.Select(column => string.Concat(aliases, '.', nameSeparator, column, nameSeparator));
 
@@ -47,5 +53,20 @@ internal static class ResultWriter
         builder.Append(aliases);
 
         return builder;
+    }
+
+    private static string GetUniqueAliases(string sql, string aliases, char nameSeparator)
+    {
+        for (uint aliasesIndex = 0; aliasesIndex < uint.MaxValue; aliasesIndex++)
+        {
+            var uniqueAlises = string.Concat(nameSeparator, aliases, aliasesIndex, nameSeparator);
+
+            if (sql.Contains(uniqueAlises, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            return uniqueAlises;
+        }
+
+        throw new ArgumentException("No alises unique value were found.", nameof(aliases));
     }
 }
