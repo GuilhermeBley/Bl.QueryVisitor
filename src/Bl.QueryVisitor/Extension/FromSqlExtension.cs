@@ -1,6 +1,5 @@
 ﻿using Bl.QueryVisitor.Visitors;
 using Dapper;
-using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Data;
 using System.Linq.Expressions;
@@ -51,6 +50,14 @@ public static class FromSqlExtension
         return current;
     }
 
+    public static string ToSqlText(this IQueryable queryable)
+    {
+        if (queryable is IFromSqlTextQuery textQuery)
+            return textQuery.ToSqlText();
+
+        return string.Empty;
+    }
+
     private static string GetMemberName<T, TIn>(Expression<Func<T, TIn>> expression)
     {
         MemberExpression? memberExpression = expression.Body as MemberExpression;
@@ -70,6 +77,7 @@ public static class FromSqlExtension
         /// </summary>
         private readonly InternalQueryProvider _provider;
         private readonly Expression _expression;
+        private readonly CommandDefinition _commandDefinition;
 
         /// <summary>
         /// These items are used to replace the 'Property.Name', because it can improve by using index 
@@ -82,6 +90,7 @@ public static class FromSqlExtension
             Expression? expression = null,
             Dictionary<string, string>? renamedProperties = null)
         {
+            _commandDefinition = commandDefinition;
             RenamedProperties = renamedProperties ?? new();
             _provider = new(dbConnection, commandDefinition, RenamedProperties);
             _expression = expression ?? Expression.Constant(this);
@@ -91,8 +100,7 @@ public static class FromSqlExtension
 
         public Expression Expression => _expression;
 
-        public IAsyncQueryProvider Provider => _provider;
-
+        public IFromSqlQueryProvider Provider => _provider;
         IQueryProvider IQueryable.Provider => _provider;
 
         public IEnumerator GetEnumerator()
@@ -119,6 +127,17 @@ public static class FromSqlExtension
                 cancellationToken.ThrowIfCancellationRequested();
                 yield return result;
             }
+        }
+
+        public string ToSqlText()
+        {
+            var translator = new SimpleQueryTranslator(RenamedProperties);
+
+            var result = translator.Translate(Expression);
+
+            var completeSql = ResultWriter.WriteSql(_commandDefinition.CommandText, result);
+
+            return completeSql;
         }
     }
 
@@ -185,7 +204,7 @@ public static class FromSqlExtension
             
             var entities = ExecuteDapperQuery<TResult>(_dbConnection, newCommand, resultType);
 
-            return (TResult)CreateEnumerable(resultType, completeSql, entities);
+            return entities;
         }
 
         public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
@@ -265,20 +284,6 @@ public static class FromSqlExtension
             {
                 throw;
             }
-        }
-
-        private static IEnumerable CreateEnumerable(
-            Type entityType, 
-            string queryString, 
-            object? entities)
-        {
-            Type listType = typeof(InternalQueringEnumerable<>).MakeGenericType(entityType);
-
-            // Create an instance of the list
-            IEnumerable listInstance = (IEnumerable?)Activator.CreateInstance(listType, queryString, entities)
-                ?? throw new InvalidOperationException("Failed to create enumerable.");
-
-            return listInstance;
         }
     }
 }

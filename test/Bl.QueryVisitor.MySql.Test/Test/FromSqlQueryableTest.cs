@@ -1,6 +1,4 @@
 using Bl.QueryVisitor.Extension;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using MySql.Data.MySqlClient;
 using System.Collections.Generic;
 using System.Data;
@@ -53,7 +51,7 @@ public class FromSqlQueryableTest
             })
             .Where(model => model.Id == 1);
 
-        var queryString = queryable.ToQueryString();
+        var queryString = queryable.ToSqlText();
 
         Assert.Equal(2, queryString.Where(c => c == '@').Count());
     }
@@ -93,7 +91,7 @@ public class FromSqlQueryableTest
             .Take(1)
             .Skip(1);
 
-        var asyncProvider = (IAsyncQueryProvider)queryable.Provider;
+        var asyncProvider = (IFromSqlQueryProvider)queryable.Provider;
 
         var results = await asyncProvider.ExecuteAsync<Task<IEnumerable<FakeModel>>>(queryable.Expression);
 

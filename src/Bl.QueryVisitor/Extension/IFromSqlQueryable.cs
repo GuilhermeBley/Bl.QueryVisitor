@@ -1,16 +1,23 @@
-﻿using Microsoft.EntityFrameworkCore.Query;
+﻿using System.Linq.Expressions;
 
 namespace Bl.QueryVisitor.Extension;
 
 public interface IFromSqlQueryable<TEntity>
     : IQueryable<TEntity>,
     IOrderedQueryable<TEntity>,
-    IAsyncEnumerable<TEntity>
+    IAsyncEnumerable<TEntity>,
+    IFromSqlTextQuery
 {
-    new IAsyncQueryProvider Provider { get; }
+    new IFromSqlQueryProvider Provider { get; }
 }
 
 public interface IFromSqlQueryProvider
-    : IAsyncQueryProvider
+    : IQueryProvider
 {
+    TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default);
+}
+
+public interface IFromSqlTextQuery
+{
+    string ToSqlText();
 }

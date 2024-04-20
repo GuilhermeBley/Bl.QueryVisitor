@@ -1,6 +1,5 @@
 using Bl.QueryVisitor.Extension;
 using Dapper;
-using Microsoft.EntityFrameworkCore;
 
 namespace Bl.QueryVisitor.Visitors.Test;
 
@@ -265,7 +264,7 @@ public class SimpleQueryTranslatorTest
             .SetColumnName(model => model.Name, renamedColumn)
             .Skip(1);
 
-        var result = query.ToQueryString();
+        var result = query.ToSqlText();
 
         Assert.Contains(renamedColumn, result, StringComparison.OrdinalIgnoreCase);
     }
@@ -284,7 +283,7 @@ public class SimpleQueryTranslatorTest
             .SetColumnName(model => model.Id, renamedColumnId)
             .Skip(1);
 
-        var result = query.ToQueryString();
+        var result = query.ToSqlText();
 
         Assert.Contains(renamedColumnName, result, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(renamedColumnId, result, StringComparison.OrdinalIgnoreCase);
