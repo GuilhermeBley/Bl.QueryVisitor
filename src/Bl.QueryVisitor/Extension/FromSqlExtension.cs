@@ -3,7 +3,6 @@ using Dapper;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Collections;
 using System.Data;
-using System.Data.Common;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -108,6 +107,18 @@ public static class FromSqlExtension
             var enumerable = this.Provider.Execute<IEnumerable<TEntity>>(this.Expression);
 
             return enumerable.GetEnumerator();
+        }
+
+        public async IAsyncEnumerator<TEntity> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        {
+            var results =
+                await this.Provider.ExecuteAsync<Task<IEnumerable<TEntity>>>(this.Expression, cancellationToken);
+
+            foreach (var result in results)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return result;
+            }
         }
     }
 
@@ -217,19 +228,19 @@ public static class FromSqlExtension
             return ExecuteDapperQueryAsync<TResult>(_dbConnection, newCommand, resultType);
         }
 
-        public static TResult ExecuteDapperQueryAsync<TResult>(
+        private static TResult ExecuteDapperQueryAsync<TResult>(
             IDbConnection connection, 
             CommandDefinition commandDefinition, 
             Type entityType)
             => ExecuteDapperQuery<TResult>("QueryAsync", connection, commandDefinition, entityType);
 
-        public static TResult ExecuteDapperQuery<TResult>(
+        private static TResult ExecuteDapperQuery<TResult>(
             IDbConnection connection,
             CommandDefinition commandDefinition,
             Type entityType)
             => ExecuteDapperQuery<TResult>("Query", connection, commandDefinition, entityType);
 
-        public static TResult ExecuteDapperQuery<TResult>(
+        private static TResult ExecuteDapperQuery<TResult>(
             string methodName,
             IDbConnection connection, 
             CommandDefinition commandDefinition, 
@@ -256,7 +267,7 @@ public static class FromSqlExtension
             }
         }
 
-        public static IEnumerable CreateEnumerable(
+        private static IEnumerable CreateEnumerable(
             Type entityType, 
             string queryString, 
             object? entities)

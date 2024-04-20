@@ -4,7 +4,8 @@ namespace Bl.QueryVisitor.Extension;
 
 public interface IFromSqlQueryable<TEntity>
     : IQueryable<TEntity>,
-    IOrderedQueryable<TEntity>
+    IOrderedQueryable<TEntity>,
+    IAsyncEnumerable<TEntity>
 {
     new IAsyncQueryProvider Provider { get; }
 }
