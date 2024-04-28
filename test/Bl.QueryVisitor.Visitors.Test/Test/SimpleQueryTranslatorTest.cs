@@ -55,7 +55,7 @@ public class SimpleQueryTranslatorTest
 
         var queryString = visitor.Translate(query.Expression).HavingSql;
 
-        Assert.Equal("\nHAVING (InsertedAt = @P1001)", queryString, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("\nHAVING (InsertedAt = @P1000)", queryString, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

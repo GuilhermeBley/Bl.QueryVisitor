@@ -19,14 +19,13 @@ public class SimpleQueryTranslator
     private readonly StringBuilder _whereBuilder = new();
     private uint? _skip = null;
     private uint? _take = null;
-    private readonly Dictionary<string, object?> _parameters = new();
+    private readonly ParamDictionary _parameters = new();
     private readonly List<string> _columns = new();
 
     /// <summary>
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
-    private int _lastParamId = 1000;
 
     public SimpleQueryTranslator()
         : this(Enumerable.Empty<KeyValuePair<string, string>>())
@@ -47,7 +46,6 @@ public class SimpleQueryTranslator
     {
         _whereBuilder.Clear();
         _columns.Clear();
-        _lastParamId = 1000;
         _parameters.Clear();
         _skip = null;
         _take = null;
@@ -226,22 +224,20 @@ public class SimpleQueryTranslator
     {
         IQueryable? q = c.Value as IQueryable;
 
-        var lastParamIdText = $"@P{_lastParamId}";
-
         if (q == null && c.Value == null)
         {
-            _whereBuilder.Append(lastParamIdText);
-            _parameters.Add(lastParamIdText, null);
+            var parameter = _parameters.AddNextParam(null);
+
+            _whereBuilder.Append(parameter);
         }
         else if (q == null)
         {
             ArgumentNullException.ThrowIfNull(c.Value);
 
-            _whereBuilder.Append(lastParamIdText);
-            _parameters.Add(lastParamIdText, c.Value);
-        }
+            var parameter = _parameters.AddNextParam(c.Value);
 
-        _lastParamId++; // always go to the next param
+            _whereBuilder.Append(parameter);
+        }
 
         return c;
     }
