@@ -32,14 +32,84 @@ internal class MethodParamVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
+        if (node.Method.Name == "Equals" && node.Method.IsStatic)
+        {
+            base.Visit(node.Arguments[0]);
+
+            _builder.Append(" = ");
+
+            base.Visit(node.Arguments[1]);
+
+            return node;
+        }
         if (node.Method.Name == "Equals")
         {
+            base.Visit(node.Object);
 
+            _builder.Append(" = ");
+
+            base.Visit(node.Arguments[0]);
 
             return node;
         }
 
 
+        if (node.Method.Name == "Concat" && node.Method.IsStatic)
+        {
+            _builder.Append("CONCAT(");
+
+            var containsAfter = false;
+
+            foreach (var arg in node.Arguments)
+            {
+                if (containsAfter)
+                    _builder.Append(',');
+
+                base.Visit(arg);
+
+                containsAfter = true;
+            }
+
+            _builder.Append(')');
+
+            return node;
+        }
+        if (node.Method.Name == "Concat")
+        {
+            _builder.Append("CONCAT(");
+
+            base.Visit(node.Object);
+            var containsAfter = false;
+
+            foreach (var arg in node.Arguments)
+            {
+                if (containsAfter)
+                    _builder.Append(',');
+                
+                base.Visit(arg);
+
+                containsAfter = true;
+            }
+
+            _builder.Append(')');
+
+            return node;
+        }
+
+        if (node.Method.Name == "Contains")
+        {
+            base.Visit(node.Object);
+
+            _builder.Append(" LIKE ");
+
+            _builder.Append("CONCAT('%', ");
+            base.Visit(node.Arguments[0]);
+            _builder.Append(" ,'%') ");
+
+            return node;
+        }
+
+        
         throw new NotSupportedException(string.Format("The method '{0}' is not supported", node.Method.Name));
     }
 

@@ -111,7 +111,7 @@ public class SimpleQueryTranslator
             }
         }
 
-        var methodVisitor = new MethodParamVisitor(_parameters);
+        var methodVisitor = new MethodParamVisitor(_parameters, _renamedProperties);
 
         var sql = methodVisitor.TranslateMethod(m);
 
