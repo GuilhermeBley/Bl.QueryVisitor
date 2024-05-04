@@ -111,7 +111,13 @@ public class SimpleQueryTranslator
             }
         }
 
-        throw new NotSupportedException(string.Format("The method '{0}' is not supported", m.Method.Name));
+        var methodVisitor = new MethodParamVisitor(_parameters);
+
+        var sql = methodVisitor.TranslateMethod(m);
+
+        _whereBuilder.Append(sql);
+
+        return m;
     }
 
     protected override Expression VisitUnary(UnaryExpression u)
