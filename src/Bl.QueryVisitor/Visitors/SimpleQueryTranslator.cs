@@ -71,53 +71,54 @@ public class SimpleQueryTranslator
         return e;
     }
 
-    protected override Expression VisitMethodCall(MethodCallExpression m)
+    protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (m.Method.DeclaringType == typeof(Queryable) && m.Method.Name == "Where")
+        if (node.Method.DeclaringType == typeof(Queryable) && node.Method.Name == "Where")
         {
-            this.Visit(m.Arguments[0]);
-            LambdaExpression lambda = (LambdaExpression)StripQuotes(m.Arguments[1]);
+            this.Visit(node.Arguments[0]);
+            LambdaExpression lambda = (LambdaExpression)StripQuotes(node.Arguments[1]);
             this.Visit(lambda.Body);
-            return m;
+
+            return node;
         }
-        else if (m.Method.Name == "Select")
+        else if (node.Method.Name == "Select")
         {
             var selectVisitor = new SelectVisitor();
 
-            var stripedQuoteSelect = StripQuotes(m.Arguments[1]);
+            var stripedQuoteSelect = StripQuotes(node.Arguments[1]);
 
             var result = selectVisitor.TranslateColumns(stripedQuoteSelect);
 
             _columns.AddRange(result);
 
-            Expression nextExpression = m.Arguments[0];
+            Expression nextExpression = node.Arguments[0];
 
             return this.Visit(nextExpression);
         }
-        else if (m.Method.Name == "Take")
+        else if (node.Method.Name == "Take")
         {
-            if (this.ParseTakeExpression(m))
+            if (this.ParseTakeExpression(node))
             {
-                Expression nextExpression = m.Arguments[0];
+                Expression nextExpression = node.Arguments[0];
                 return this.Visit(nextExpression);
             }
         }
-        else if (m.Method.Name == "Skip")
+        else if (node.Method.Name == "Skip")
         {
-            if (this.ParseSkipExpression(m))
+            if (this.ParseSkipExpression(node))
             {
-                Expression nextExpression = m.Arguments[0];
+                Expression nextExpression = node.Arguments[0];
                 return this.Visit(nextExpression);
             }
         }
 
         var methodVisitor = new MethodParamVisitor(_parameters, _renamedProperties);
 
-        var sql = methodVisitor.TranslateMethod(m);
+        var sql = methodVisitor.TranslateMethod(node);
 
         _whereBuilder.Append(sql);
 
-        return m;
+        return node;
     }
 
     protected override Expression VisitUnary(UnaryExpression u)

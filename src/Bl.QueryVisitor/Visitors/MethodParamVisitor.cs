@@ -25,7 +25,9 @@ internal class MethodParamVisitor
     {
         _builder.Clear();
 
+        _builder.Append('(');
         Visit(expression);
+        _builder.Append(')');
 
         return _builder.ToString();
     }
@@ -104,7 +106,7 @@ internal class MethodParamVisitor
 
             _builder.Append("CONCAT('%',");
             base.Visit(node.Arguments[0]);
-            _builder.Append(",'%') ");
+            _builder.Append(",'%')");
 
             return node;
         }
