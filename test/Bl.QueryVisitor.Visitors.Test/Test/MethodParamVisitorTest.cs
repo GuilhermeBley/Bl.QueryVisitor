@@ -88,6 +88,6 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (Name LIKE CONCAT('%',@P1000,'%') AND (Name = CONCAT(@P1001,@P1002,@P1003))", result.HavingSql);
+        Assert.Equal("\nHAVING (Name LIKE CONCAT('%',@P1000,'%')) AND (Name = CONCAT(@P1001,@P1002,@P1003))", result.HavingSql);
     }
 }

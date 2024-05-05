@@ -320,4 +320,35 @@ public class SimpleQueryTranslatorTest
             new[] { nameof(FakeComplexModel.DateTimeOffsetWithUnderlineType) },
             result.Columns);
     }
+
+    [Fact]
+    public void Translate_CheckDoubleWhere_SuccessQueryGenerated()
+    {
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Where(f => f.MyGuid == new Guid("337f04a8-c8cb-488c-b64d-e0ecdcc07977"))
+            .Where(f => f.DateTimeOffset == new DateTime(2004, 1, 1));
+
+        var translator = new Visitors.SimpleQueryTranslator();
+
+        var result = translator.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (MyGuid = @P1000) AND (DateTimeOffset = @P1001)", result.HavingSql);
+    }
+
+    [Fact]
+    public void Translate_CheckTripleWhere_SuccessQueryGenerated()
+    {
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Where(f => f.MyGuid == new Guid("337f04a8-c8cb-488c-b64d-e0ecdcc07977"))
+            .Where(f => f.MyGuid == new Guid("337f04a8-c8cb-488c-b64d-e0ecdcc07977"))
+            .Where(f => f.DateTimeOffset == new DateTime(2004, 1, 1));
+
+        var translator = new Visitors.SimpleQueryTranslator();
+
+        var result = translator.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (MyGuid = @P1000) AND (MyGuid = @P1001) AND (DateTimeOffset = @P1002)", result.HavingSql);
+    }
 }

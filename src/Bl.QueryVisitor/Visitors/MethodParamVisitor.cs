@@ -25,9 +25,7 @@ internal class MethodParamVisitor
     {
         _builder.Clear();
 
-        _builder.Append('(');
         Visit(expression);
-        _builder.Append(')');
 
         return _builder.ToString();
     }
@@ -46,11 +44,15 @@ internal class MethodParamVisitor
         }
         if (node.Method.Name == "Equals")
         {
+            _builder.Append('(');
+
             base.Visit(node.Object);
 
             _builder.Append(" = ");
 
             base.Visit(node.Arguments[0]);
+
+            _builder.Append(')');
 
             return node;
         }
@@ -100,6 +102,8 @@ internal class MethodParamVisitor
 
         if (node.Method.Name == "Contains")
         {
+            _builder.Append('(');
+
             base.Visit(node.Object);
 
             _builder.Append(" LIKE ");
@@ -107,6 +111,8 @@ internal class MethodParamVisitor
             _builder.Append("CONCAT('%',");
             base.Visit(node.Arguments[0]);
             _builder.Append(",'%')");
+
+            _builder.Append(')');
 
             return node;
         }

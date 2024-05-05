@@ -76,7 +76,14 @@ public class SimpleQueryTranslator
         if (node.Method.DeclaringType == typeof(Queryable) && node.Method.Name == "Where")
         {
             this.Visit(node.Arguments[0]);
+
             LambdaExpression lambda = (LambdaExpression)StripQuotes(node.Arguments[1]);
+
+            if (_whereBuilder.Length > 0)
+            {
+                _whereBuilder.Append(" AND ");
+            }
+
             this.Visit(lambda.Body);
 
             return node;
