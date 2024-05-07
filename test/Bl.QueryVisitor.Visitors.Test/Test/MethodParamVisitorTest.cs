@@ -90,4 +90,18 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING (Name LIKE CONCAT('%',@P1000,'%')) AND (Name = CONCAT(@P1001,@P1002,@P1003))", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckDateTimeNow_SuccessDateParsedToSql()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.InsertedAt == DateTime.Now);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (InsertedAt = NOW())", result.HavingSql);
+    }
 }

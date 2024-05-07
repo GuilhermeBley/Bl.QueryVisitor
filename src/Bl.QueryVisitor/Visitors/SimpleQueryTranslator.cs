@@ -281,6 +281,14 @@ public class SimpleQueryTranslator
             return Visit(Expression.Constant(result));
         }
 
+        if (m.NodeType == ExpressionType.MemberAccess &&
+            SqlMethodsTranslator.TryTranslate(m, out var sqlMethodFound))
+        {
+            _whereBuilder.Append(sqlMethodFound);
+
+            return m;
+        }
+
         throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
     }
 
