@@ -118,4 +118,18 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING (InsertedAt = UTC_TIMESTAMP())", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckDateTimegGuid_SuccessGuidParsedToSql()
+    {
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Where(model => model.MyGuid == Guid.NewGuid());
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (MyGuid = UUID())", result.HavingSql);
+    }
 }

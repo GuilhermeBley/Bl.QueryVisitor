@@ -117,8 +117,12 @@ internal class MethodParamVisitor
             return node;
         }
 
-        
-        throw new NotSupportedException(string.Format("The method '{0}' is not supported", node.Method.Name));
+        if (!SqlStaticMethodsTranslator.TryTranslate(node, out var sqlMethod))
+            throw new NotSupportedException(string.Format("The method '{0}' is not supported", node.Method.Name));
+
+        _builder.Append(sqlMethod);
+
+        return node;
     }
 
     protected override Expression VisitNew(NewExpression node)

@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 
 namespace Bl.QueryVisitor.Visitors;
 
-internal class SqlMethodsTranslator
+internal class SqlStaticMethodsTranslator
     : ExpressionVisitor
 {
     private readonly static IReadOnlyDictionary<string, string> _sqlMethods
@@ -11,6 +11,7 @@ internal class SqlMethodsTranslator
         {
             { "Now", "NOW()" },
             { "UtcNow", "UTC_TIMESTAMP()" },
+            { "NewGuid", "UUID()" },
         };
 
     private string? _currentMethodFound;
@@ -44,7 +45,7 @@ internal class SqlMethodsTranslator
 
     public static bool TryTranslate(Expression expression, out string? sqlMethodFound)
     {
-        var translator = new SqlMethodsTranslator();
+        var translator = new SqlStaticMethodsTranslator();
 
         var result = translator.InternTryTranslate(expression, out sqlMethodFound);
 

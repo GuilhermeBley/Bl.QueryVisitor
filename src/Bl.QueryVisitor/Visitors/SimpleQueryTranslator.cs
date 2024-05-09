@@ -282,7 +282,7 @@ public class SimpleQueryTranslator
         }
 
         if (m.NodeType == ExpressionType.MemberAccess &&
-            SqlMethodsTranslator.TryTranslate(m, out var sqlMethodFound))
+            SqlStaticMethodsTranslator.TryTranslate(m, out var sqlMethodFound))
         {
             _whereBuilder.Append(sqlMethodFound);
 
