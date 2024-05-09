@@ -104,4 +104,18 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING (InsertedAt = NOW())", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckDateTimeUtcNow_SuccessDateParsedToSql()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.InsertedAt == DateTime.UtcNow);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (InsertedAt = UTC_TIMESTAMP())", result.HavingSql);
+    }
 }

@@ -9,7 +9,8 @@ internal class SqlMethodsTranslator
     private readonly static IReadOnlyDictionary<string, string> _sqlMethods
         = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "Now", "NOW()" }
+            { "Now", "NOW()" },
+            { "UtcNow", "UTC_TIMESTAMP()" },
         };
 
     private string? _currentMethodFound;
