@@ -28,7 +28,7 @@ public class TestController : ControllerBase
     {
         var queryable =
             CreateConnection()
-            .QueryAsQueryable<FakeModel>(new CommandDefinition(
+            .SqlAsQueryable<FakeModel>(new CommandDefinition(
                 "SELECT 1 FROM table"));
 
         return Ok(queryable);

@@ -12,7 +12,7 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .Where(model => model.Id == 1);
 
         var executedResult = queryable.Provider.Execute(queryable.Expression);
@@ -25,7 +25,7 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var queryable = connection.QueryAsQueryable<FakeModel>(
+        var queryable = connection.SqlAsQueryable<FakeModel>(
             "SELECT * FROM `queryable-test`.FakeModel WHERE Name = @Name",
             parameters: new
             {
@@ -43,7 +43,7 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var queryable = connection.QueryAsQueryable<FakeModel>(
+        var queryable = connection.SqlAsQueryable<FakeModel>(
             "SELECT * FROM `queryable-test`.FakeModel WHERE Name = @Name",
             parameters: new
             {
@@ -61,7 +61,7 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .OrderByDescending(model => model.Id)
             .ThenBy(model => model.Name);
 
@@ -75,7 +75,7 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .Take(1)
             .Skip(1);
 
@@ -87,7 +87,7 @@ public class FromSqlQueryableTest
     {
         using var connection = CreateConnection();
 
-        var queryable = connection.QueryAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
             .Take(1)
             .Skip(1);
 

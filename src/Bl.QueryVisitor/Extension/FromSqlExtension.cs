@@ -7,16 +7,32 @@ using System.Reflection;
 
 namespace Bl.QueryVisitor.Extension;
 
+/// <summary>
+/// This extension class provides methods to generate 
+/// queryables by SQL commands in Dapper.
+/// </summary>
 public static class FromSqlExtension
 {
-    public static IFromSqlQueryable<TEntity> QueryAsQueryable<TEntity>(
+    /// <summary>
+    /// This method generates a MYSQL queryable to operate with query methods.
+    /// </summary>
+    /// <remarks>
+    ///     <para>The queryable supports the following methods:</para>
+    ///     <list type="bullet">
+    ///     <item>Where</item>
+    ///     <item>OrderBy</item>
+    ///     <item>OrderByDescending</item>
+    ///     <item>Select</item>
+    ///     </list>
+    /// </remarks>
+    public static IFromSqlQueryable<TEntity> SqlAsQueryable<TEntity>(
         this IDbConnection connection,
         string sql,
         object? parameters = null,
         IDbTransaction? transaction = null,
         CancellationToken cancellationToken = default)
         where TEntity : class
-        => QueryAsQueryable<TEntity>(
+        => SqlAsQueryable<TEntity>(
             connection,
             commandDefinition: new CommandDefinition(
                 sql,
@@ -24,7 +40,19 @@ public static class FromSqlExtension
                 transaction: transaction,
                 cancellationToken: cancellationToken));
 
-    public static IFromSqlQueryable<TEntity> QueryAsQueryable<TEntity>(
+    /// <summary>
+    /// This method generates a MYSQL queryable to operate with query methods.
+    /// </summary>
+    /// <remarks>
+    ///     <para>The queryable supports the following methods:</para>
+    ///     <list type="bullet">
+    ///     <item>Where</item>
+    ///     <item>OrderBy</item>
+    ///     <item>OrderByDescending</item>
+    ///     <item>Select</item>
+    ///     </list>
+    /// </remarks>
+    public static IFromSqlQueryable<TEntity> SqlAsQueryable<TEntity>(
         this IDbConnection connection,
         CommandDefinition commandDefinition)
         where TEntity : class
@@ -32,6 +60,13 @@ public static class FromSqlExtension
         return new InternalQueryable<TEntity>(connection, commandDefinition);
     }
 
+    /// <summary>
+    /// Add direct columns related to object properties or fields.
+    /// </summary>
+    /// <remarks>
+    ///     <para>Useful in performance scenarios, as long as the <paramref name="columnName"/> could be the direct table column.</para>
+    ///     <para></para>
+    /// </remarks>
     public static IQueryable<TEntity> SetColumnName<TEntity, TIn>(
         this IQueryable<TEntity> current,
         Expression<Func<TEntity, TIn>> property,

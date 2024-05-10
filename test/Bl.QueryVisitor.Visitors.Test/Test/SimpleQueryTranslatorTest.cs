@@ -259,7 +259,7 @@ public class SimpleQueryTranslatorTest
         const string renamedColumn = "newName";
 
         var query = FakeConnection.Default
-            .QueryAsQueryable<FakeModel>(new CommandDefinition())
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
             .Where(model => model.Name == "name")
             .SetColumnName(model => model.Name, renamedColumn)
             .Skip(1);
@@ -276,7 +276,7 @@ public class SimpleQueryTranslatorTest
         const string renamedColumnId = "newId";
 
         var query = FakeConnection.Default
-            .QueryAsQueryable<FakeModel>(new CommandDefinition())
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
             .OrderBy(model => model.Name)
             .ThenBy(model => model.Id)
             .SetColumnName(model => model.Name, renamedColumnName)
