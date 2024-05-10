@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bl.QueryVisitor\Bl.QueryVisitor.csproj" />
+    <ProjectReference Include="..\..\src\Bl.QueryVisitor.MySql\Bl.QueryVisitor.MySql.csproj" />
   </ItemGroup>
 
 </Project>

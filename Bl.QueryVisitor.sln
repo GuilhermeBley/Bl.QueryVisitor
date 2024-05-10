@@ -5,15 +5,15 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{996042DC-65CD-4987-B154-3D88C8B063ED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bl.QueryVisitor", "src\Bl.QueryVisitor\Bl.QueryVisitor.csproj", "{78CD48A3-B414-4ACF-9512-10321C0EACD6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bl.QueryVisitor.MySql", "src\Bl.QueryVisitor.MySql\Bl.QueryVisitor.MySql.csproj", "{78CD48A3-B414-4ACF-9512-10321C0EACD6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{E10F322C-2C9C-47CB-B10B-149C31106328}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bl.QueryVisitor.Visitors.Test", "test\Bl.QueryVisitor.Visitors.Test\Bl.QueryVisitor.Visitors.Test.csproj", "{F202D9E2-59AA-4827-ACA1-FDE1E7B0FC9C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bl.QueryVisitor.MySql.Visitors.Test", "test\Bl.QueryVisitor.MySql.Visitors.Test\Bl.QueryVisitor.MySql.Visitors.Test.csproj", "{F202D9E2-59AA-4827-ACA1-FDE1E7B0FC9C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bl.QueryVisitor.MySql.Test", "test\Bl.QueryVisitor.MySql.Test\Bl.QueryVisitor.MySql.Test.csproj", "{F3447D6D-6EE3-4D47-B892-BFF92486B6C2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bl.QueryVisitor.Api.Test", "test\Bl.QueryVisitor.Api.Test\Bl.QueryVisitor.Api.Test.csproj", "{7E2AE4B6-BDBA-4FCA-8B5E-6F39D5D67355}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bl.QueryVisitor.MySql.Api.Test", "test\Bl.QueryVisitor.MySql.Api.Test\Bl.QueryVisitor.MySql.Api.Test.csproj", "{7E2AE4B6-BDBA-4FCA-8B5E-6F39D5D67355}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
