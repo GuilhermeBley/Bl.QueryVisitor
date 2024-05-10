@@ -65,7 +65,7 @@ public static class FromSqlExtension
     /// </summary>
     /// <remarks>
     ///     <para>Useful in performance scenarios, as long as the <paramref name="columnName"/> could be the direct table column.</para>
-    ///     <para></para>
+    ///     <para>The property name will be changed to the column name in the MYSQL query.</para>
     /// </remarks>
     public static IQueryable<TEntity> SetColumnName<TEntity, TIn>(
         this IQueryable<TEntity> current,
