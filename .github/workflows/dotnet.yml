@@ -29,3 +29,11 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release ${{ env.PROJECT_DIR }}
       
+    - name: Pack
+      run: dotnet pack --configuration Release --output nupkg ${{ env.PROJECT_DIR }}
+      
+    - name: Publish
+      uses: nuget/publish@1
+      with:
+        nuget-api-key: ${{ secrets.NUGET }} # Set your NuGet API key as a secret in your GitHub repository
+        nuget-package-path: './nupkg/*.nupkg'
