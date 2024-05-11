@@ -33,7 +33,4 @@ jobs:
       run: dotnet pack --configuration Release --output nupkg ${{ env.PROJECT_DIR }}
       
     - name: Publish
-      uses: actions/setup-dotnet@v1
-      with:
-        nuget-api-key: ${{ secrets.NUGET }} # Set your NuGet API key as a secret in your GitHub repository
-        nuget-package-path: './nupkg/*.nupkg'
+      run: dotnet nuget push nupkg/*.nupkg --api-key ${{ secrets.NUGET }} --source https://api.nuget.org/v3/index.json
