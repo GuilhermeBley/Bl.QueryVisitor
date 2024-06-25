@@ -57,7 +57,7 @@ public static class FromSqlExtension
         CommandDefinition commandDefinition)
         where TEntity : class
     {
-        return new InternalQueryable<TEntity>(connection, commandDefinition);
+        return new InternalQueryable<TEntity>(connection, commandDefinition, typeof(TEntity));
     }
 
     /// <summary>
@@ -113,6 +113,8 @@ public static class FromSqlExtension
         private readonly InternalQueryProvider _provider;
         private readonly Expression _expression;
         private readonly CommandDefinition _commandDefinition;
+        private readonly Type _model;
+        public Type ModelType => _model;
 
         /// <summary>
         /// These items are used to replace the 'Property.Name', because it can improve by using index 
@@ -120,15 +122,17 @@ public static class FromSqlExtension
         public readonly Dictionary<string, string> RenamedProperties;
 
         public InternalQueryable(
-            IDbConnection dbConnection, 
+            IDbConnection dbConnection,
             CommandDefinition commandDefinition,
+            Type model,
             Expression? expression = null,
             Dictionary<string, string>? renamedProperties = null)
         {
             _commandDefinition = commandDefinition;
             RenamedProperties = renamedProperties ?? new();
-            _provider = new(dbConnection, commandDefinition, RenamedProperties);
+            _provider = new(dbConnection, commandDefinition, RenamedProperties, model);
             _expression = expression ?? Expression.Constant(this);
+            _model = model;
         }
 
         public Type ElementType => typeof(TEntity);
@@ -181,6 +185,7 @@ public static class FromSqlExtension
     {
         private readonly IDbConnection _dbConnection;
         private readonly CommandDefinition _commandDefinition;
+        private readonly Type _model;
         /// <summary>
         /// These items are used to replace the 'Property.Name', because it can improve by using index 
         /// </summary>
@@ -189,18 +194,30 @@ public static class FromSqlExtension
         public InternalQueryProvider(
             IDbConnection dbConnection,
             CommandDefinition commandDefinition,
-            Dictionary<string, string> renamedProperties)
+            Dictionary<string, string> renamedProperties,
+            Type model)
         {
             _commandDefinition = commandDefinition;
             _dbConnection = dbConnection;
             _renamedProperties = renamedProperties;
+            _model = model;
         }
 
         public IQueryable CreateQuery(Expression expression)
-            => new InternalQueryable<object>(_dbConnection, _commandDefinition, expression, _renamedProperties);
+            => new InternalQueryable<object>(
+                dbConnection: _dbConnection, 
+                commandDefinition: _commandDefinition, 
+                model: this._model,
+                expression: expression, 
+                renamedProperties: _renamedProperties);
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-            => new InternalQueryable<TElement>(_dbConnection, _commandDefinition, expression, _renamedProperties);
+            => new InternalQueryable<TElement>(
+                dbConnection: _dbConnection,
+                commandDefinition: _commandDefinition,
+                model: this._model,
+                expression: expression,
+                renamedProperties: _renamedProperties);
 
         public object? Execute(Expression expression)
             => Execute<IEnumerable<object>>(expression);
@@ -247,11 +264,7 @@ public static class FromSqlExtension
             if (!typeof(TResult).IsAssignableTo(typeof(Task)))
                 throw new NotSupportedException("It's required a 'Task' result.");
 
-            var taskType = typeof(TResult).GetGenericArguments().Single();
-
-            var resultType = taskType.GetGenericArguments()
-                .FirstOrDefault() 
-                ?? typeof(object);
+            var resultType = this._model;
 
             var translator = new SimpleQueryTranslator(_renamedProperties);
 

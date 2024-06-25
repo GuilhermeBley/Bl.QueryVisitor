@@ -30,7 +30,7 @@ public class TestController : ControllerBase
             CreateConnection()
             .SqlAsQueryable<FakeModel>(new CommandDefinition(
                 "SELECT * FROM `queryable-test`.FakeModel"));
-
+        
         return Ok(queryable);
     }
 

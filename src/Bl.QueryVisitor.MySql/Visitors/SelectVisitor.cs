@@ -27,6 +27,12 @@ internal class SelectVisitor : ExpressionVisitor
         return _columns.ToArray();
     }
 
+    protected override Expression VisitLambda<T>(Expression<T> node)
+    {
+
+        return base.VisitLambda(node);
+    }
+
     protected override Expression VisitMember(MemberExpression node)
     {
         if (!CanBeSelected(node.Type))
