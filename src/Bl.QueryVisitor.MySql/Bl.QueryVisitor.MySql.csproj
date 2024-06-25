@@ -6,7 +6,7 @@
 	<PackageTags>orm;sql;micro-orm</PackageTags>
 	<Description>A high performance queries in MYSQL using LINQ.</Description>
 	<Authors>Guilherme Bley</Authors>
-	<Version>8.0.0</Version>
+	<Version>8.0.1</Version>
 	  
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
