@@ -9,7 +9,7 @@ public interface ISimpleQueryTranslator
     SimpleQueryTranslatorResult Translate(Expression expression);
 }
 
-public class SimpleQueryTranslator 
+public class SimpleQueryTranslator
     : ExpressionVisitor,
     ISimpleQueryTranslator
 {
@@ -262,7 +262,7 @@ public class SimpleQueryTranslator
         {
             var columnName = _renamedProperties
                 .TryGetValue(m.Member.Name, out var renamedValue)
-                    ? renamedValue 
+                    ? renamedValue
                     : m.Member.Name;
 
             _whereBuilder.Append(columnName);
