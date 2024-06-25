@@ -299,12 +299,7 @@ public class SimpleQueryTranslator
 
     private bool ParseTakeExpression(MethodCallExpression expression)
     {
-        ConstantExpression sizeExpression;
-        
-        if (expression.Arguments[1] is ConstantExpression)
-            sizeExpression = (ConstantExpression)expression.Arguments[1];
-        else
-            sizeExpression = ConvertToConstant(expression.Arguments[1]);
+        ConstantExpression sizeExpression = ConvertToConstant(expression.Arguments[1]);
 
         uint size;
         if (uint.TryParse(sizeExpression.Value?.ToString(), out size))
@@ -318,7 +313,7 @@ public class SimpleQueryTranslator
 
     private bool ParseSkipExpression(MethodCallExpression expression)
     {
-        ConstantExpression sizeExpression = (ConstantExpression)expression.Arguments[1];
+        ConstantExpression sizeExpression = ConvertToConstant(expression.Arguments[1]);
 
         uint size;
         if (uint.TryParse(sizeExpression.Value?.ToString(), out size))
@@ -365,6 +360,11 @@ public class SimpleQueryTranslator
 
     private static ConstantExpression ConvertToConstant(Expression node)
     {
+        if (node is ConstantExpression constValue)
+        {
+            return constValue;
+        }
+
         var convertedExp = Expression.Convert(node, typeof(object));
 
         var instantiator = Expression
