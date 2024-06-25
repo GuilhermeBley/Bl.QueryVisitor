@@ -1,7 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+	<AssemblyName>Bl.QueryVisitor.MySql</AssemblyName>
+	<Title>Bl.QueryVisitor.MySql</Title>
+	<PackageTags>orm;sql;micro-orm</PackageTags>
+	<Description>A high performance queries in MYSQL using LINQ.</Description>
+	<Authors>Guilherme Bley</Authors>
+	<Version>8.0.1</Version>
+	  
+    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
