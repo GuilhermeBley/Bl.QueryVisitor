@@ -29,6 +29,23 @@ internal class SelectVisitor : ExpressionVisitor
 
     protected override Expression VisitLambda<T>(Expression<T> node)
     {
+        var lambda = node as LambdaExpression;
+        
+        // Compile the expression to a delegate
+        var compiledDelegate = lambda.Compile();
+
+        // Create a new Func<object, object> that wraps the compiled delegate
+        Func<object?, object?> func = (input) =>
+        {
+            // Convert input to the type expected by the original delegate
+            var typedInput = input;
+
+            // Invoke the compiled delegate
+            var result = compiledDelegate.DynamicInvoke(typedInput);
+
+            // Return the result as an object
+            return result;
+        };
 
         return base.VisitLambda(node);
     }
