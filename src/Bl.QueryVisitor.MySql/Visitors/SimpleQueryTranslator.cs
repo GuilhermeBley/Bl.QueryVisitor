@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using Bl.QueryVisitor.MySql;
+using System.Collections.Immutable;
 using System.Linq.Expressions;
 using System.Text;
 
@@ -21,11 +22,14 @@ public class SimpleQueryTranslator
     private uint? _take = null;
     private readonly ParamDictionary _parameters = new();
     private readonly List<string> _columns = new();
+    private readonly SelectVisitor _selectVisitor = new SelectVisitor();
 
     /// <summary>
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+
+    public IItemTranslator ItemTranslator => _selectVisitor;
 
     public SimpleQueryTranslator()
         : this(Enumerable.Empty<KeyValuePair<string, string>>())
@@ -90,7 +94,10 @@ public class SimpleQueryTranslator
         }
         else if (node.Method.Name == "Select")
         {
-            var selectVisitor = new SelectVisitor();
+            var selectVisitor = _selectVisitor;
+
+            if (selectVisitor.ColumnsAlreadyTranslated)
+                throw new InvalidOperationException("You can only translate the columns once.");
 
             var stripedQuoteSelect = StripQuotes(node.Arguments[1]);
 

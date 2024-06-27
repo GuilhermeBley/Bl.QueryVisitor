@@ -98,6 +98,26 @@ public class FromSqlQueryableTest
         Assert.NotEmpty(results);
     }
 
+    [Fact]
+    public async void ExecuteAsync_ExecuteWithNewObjectSelection()
+    {
+        using var connection = CreateConnection();
+
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+            .Take(1)
+            .Skip(1)
+            .Select(e => new
+            {
+                e.Name
+            });
+
+        var asyncProvider = (IFromSqlQueryProvider)queryable.Provider;
+
+        var results = await asyncProvider.ExecuteAsync<Task<IEnumerable<object>>>(queryable.Expression);
+
+        Assert.NotEmpty(results);
+    }
+
     private static IDbConnection CreateConnection()
     {
         return new MySqlConnection("server=127.0.0.1;port=3310;user id=root;password=root;persistsecurityinfo=True;database=queryable-test;default command timeout=600;SslMode=None");

@@ -6,7 +6,8 @@ public interface IFromSqlQueryable<TEntity>
     : IQueryable<TEntity>,
     IOrderedQueryable<TEntity>,
     IAsyncEnumerable<TEntity>,
-    IFromSqlTextQuery
+    IFromSqlTextQuery,
+    ISqlModel
 {
     new IFromSqlQueryProvider Provider { get; }
 }
@@ -20,4 +21,9 @@ public interface IFromSqlQueryProvider
 public interface IFromSqlTextQuery
 {
     string ToSqlText();
+}
+
+public interface ISqlModel
+{
+    Type ModelType { get; }
 }
