@@ -298,8 +298,7 @@ public static class FromSqlExtension
                 _dbConnection, 
                 newCommand, 
                 resultType, 
-                translator.
-                ItemTranslator);
+                translator.ItemTranslator);
         }
 
         /// <summary>
