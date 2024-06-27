@@ -1,9 +1,11 @@
-﻿using Bl.QueryVisitor.Visitors;
+﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.Visitors;
 using Dapper;
 using System.Collections;
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
+using static Bl.QueryVisitor.Visitors.OrderByExpressionVisitor;
 
 namespace Bl.QueryVisitor.Extension;
 
@@ -229,7 +231,7 @@ public static class FromSqlExtension
             if (!tResultType.IsAssignableTo(typeof(IEnumerable)))
                 throw new NotSupportedException("The 'TResult' needs to be an 'IEnumerable'.");
 
-            var resultType = tResultType.GetGenericArguments().FirstOrDefault() ?? typeof(object);
+            var resultType = this._model;
 
             var translator = new SimpleQueryTranslator(_renamedProperties);
 
@@ -254,9 +256,9 @@ public static class FromSqlExtension
                     flags: _commandDefinition.Flags,
                     cancellationToken: _commandDefinition.CancellationToken);
             
-            var entities = ExecuteDapperQuery<TResult>(_dbConnection, newCommand, resultType);
+            var entities = ExecuteAndTransformData(_dbConnection, newCommand, resultType, translator.ItemTranslator);
 
-            return entities;
+            return (TResult)entities;
         }
 
         public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default)
@@ -291,37 +293,37 @@ public static class FromSqlExtension
                     commandType: _commandDefinition.CommandType,
                     flags: _commandDefinition.Flags,
                     cancellationToken: cts.Token);
-
-            return ExecuteDapperQueryAsync<TResult>(_dbConnection, newCommand, resultType);
+            
+            return GetListTaskToExecuteAndTransformDataAsync<TResult>(
+                _dbConnection, 
+                newCommand, 
+                resultType, 
+                translator.
+                ItemTranslator);
         }
 
-        private static TResult ExecuteDapperQueryAsync<TResult>(
-            IDbConnection connection, 
-            CommandDefinition commandDefinition, 
-            Type entityType)
-            => ExecuteDapperQuery<TResult>("QueryAsync", connection, commandDefinition, entityType);
-
-        private static TResult ExecuteDapperQuery<TResult>(
+        /// <summary>
+        /// Execute method ExecuteAndTransformDataAsync with generic
+        /// </summary>
+        /// <typeparam name="TResult">Task of something</typeparam>
+        private static TResult GetListTaskToExecuteAndTransformDataAsync<TResult>(
             IDbConnection connection,
             CommandDefinition commandDefinition,
-            Type entityType)
-            => ExecuteDapperQuery<TResult>("Query", connection, commandDefinition, entityType);
-
-        private static TResult ExecuteDapperQuery<TResult>(
-            string methodName,
-            IDbConnection connection, 
-            CommandDefinition commandDefinition, 
-            Type entityType)
+            Type entityType,
+            IItemTranslator translator)
         {
             try
             {
+                var listType = typeof(TResult).GetGenericArguments().First();
+
                 // Get the Query method using reflection
-                MethodInfo queryAsyncMethod =
-                    typeof(SqlMapper).GetMethod(methodName, genericParameterCount: 1, new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
-                        .MakeGenericMethod(entityType)
+                MethodInfo executeAndTransformDataAsync =
+                    typeof(InternalQueryProvider).GetMethods(BindingFlags.Static | BindingFlags.NonPublic)
+                        .FirstOrDefault(m => m.Name == nameof(InternalQueryProvider.ExecuteAndTransformDataAsync))?
+                        .MakeGenericMethod(listType)
                     ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
-                
-                return (TResult?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
+
+                return (TResult?)executeAndTransformDataAsync.Invoke(null, new object[] { connection, commandDefinition, entityType, translator })
                     ?? throw new InvalidOperationException("Invalid 'TResult'.");
             }
             catch (AggregateException e)
@@ -332,6 +334,86 @@ public static class FromSqlExtension
             {
                 throw;
             }
+        }
+
+        private static async Task<T> ExecuteAndTransformDataAsync<T>(
+            IDbConnection connection,
+            CommandDefinition commandDefinition,
+            Type entityType,
+            IItemTranslator translator)
+        {
+            var entitiesCollection
+                = await ExecuteDapperQueryAsync(connection, commandDefinition, entityType);
+
+            var expectedType = typeof(T).GetGenericArguments()
+                .First(); // first type argument of the list
+                
+            IList results = CreateList(expectedType, entitiesCollection.Count());
+            foreach (var item in entitiesCollection)
+            {
+                var translatedItem= translator.TransformItem(item);
+
+                results.Add(translatedItem);
+            }
+
+            return (T)results;
+        }
+
+        private static IEnumerable ExecuteAndTransformData(
+            IDbConnection connection,
+            CommandDefinition commandDefinition,
+            Type entityType,
+            IItemTranslator translator)
+        {
+            var entitiesCollection = ExecuteDapperQuery(connection, commandDefinition, entityType);
+
+            IList results = CreateList(entityType, entitiesCollection.Count());
+            foreach (var item in entitiesCollection)
+            {
+                results.Add(translator.TransformItem(item));
+            }
+
+            return results;
+        }
+
+        private static Task<IEnumerable<object>> ExecuteDapperQueryAsync(
+            IDbConnection connection, 
+            CommandDefinition commandDefinition, 
+            Type entityType)
+            => connection.QueryAsync(entityType, commandDefinition);
+
+        private static IEnumerable<object> ExecuteDapperQuery(
+            IDbConnection connection,
+            CommandDefinition commandDefinition,
+            Type entityType)
+        {
+            try
+            {
+                // Get the Query method using reflection
+                MethodInfo queryAsyncMethod =
+                    typeof(SqlMapper).GetMethod(nameof(Dapper.SqlMapper.Query), genericParameterCount: 1, new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
+                        .MakeGenericMethod(entityType)
+                    ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
+                
+                return (IEnumerable<object>?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
+                    ?? throw new InvalidOperationException("Invalid 'TResult'.");
+            }
+            catch (AggregateException e)
+            {
+                throw e.InnerExceptions.First();
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        private static IList CreateList(Type entityType, int count)
+        {
+            Type listType = typeof(List<>).MakeGenericType(entityType);
+            IList? list = (IList?)Activator.CreateInstance(listType,new object?[] { count });
+
+            return list ?? throw new InvalidOperationException();
         }
     }
 }
