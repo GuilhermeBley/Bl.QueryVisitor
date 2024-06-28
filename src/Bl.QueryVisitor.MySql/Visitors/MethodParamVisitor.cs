@@ -117,6 +117,23 @@ internal class MethodParamVisitor
             return node;
         }
 
+        if (node.Method.Name == "StartsWith")
+        {
+            _builder.Append('(');
+
+            base.Visit(node.Object);
+
+            _builder.Append(" LIKE ");
+
+            _builder.Append("CONCAT(");
+            base.Visit(node.Arguments[0]);
+            _builder.Append(",'%')");
+
+            _builder.Append(')');
+
+            return node;
+        }
+
         if (!SqlStaticMethodsTranslator.TryTranslate(node, out var sqlMethod))
             throw new NotSupportedException(string.Format("The method '{0}' is not supported", node.Method.Name));
 
