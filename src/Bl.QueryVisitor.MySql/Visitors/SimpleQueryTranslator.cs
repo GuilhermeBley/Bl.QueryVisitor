@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Visitors;
 using System.Collections.Immutable;
 using System.Linq.Expressions;
 using System.Text;
@@ -292,6 +293,14 @@ public class SimpleQueryTranslator
             SqlStaticMethodsTranslator.TryTranslate(m, out var sqlMethodFound))
         {
             _whereBuilder.Append(sqlMethodFound);
+
+            return m;
+        }
+
+        if (m.NodeType == ExpressionType.MemberAccess &&
+            SqlMethodParameterTranslator.TryTranslate(m, _renamedProperties, out var sqlFunctionFound))
+        {
+            _whereBuilder.Append(sqlFunctionFound);
 
             return m;
         }

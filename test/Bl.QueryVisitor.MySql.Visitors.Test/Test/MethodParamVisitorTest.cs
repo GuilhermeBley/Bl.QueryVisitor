@@ -132,4 +132,46 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING (MyGuid = UUID())", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckDateYear_SuccessYearFunc()
+    {
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Where(model => model.DateTimeOffset.Year > 1);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (Year(DateTimeOffset) > @P1000)", result.HavingSql);
+    }
+
+    [Fact]
+    public void Translate_CheckDateYear_SuccessMonthFunc()
+    {
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Where(model => model.DateTimeOffset.Month > 1);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (Month(DateTimeOffset) > @P1000)", result.HavingSql);
+    }
+
+    [Fact]
+    public void Translate_CheckDateYear_SuccessDayFunc()
+    {
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Where(model => model.DateTimeOffset.Day > 1);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (Day(DateTimeOffset) > @P1000)", result.HavingSql);
+    }
 }
