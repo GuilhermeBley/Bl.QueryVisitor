@@ -188,4 +188,33 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING (Name IS NOT NULL)", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckIfStatment_SuccessConvertedToIfMysql()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => (model.Name == null ? true : false));
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING IF((Name IS NULL),@P1000,@P1001)", result.HavingSql);
+    }
+
+    [Fact]
+    public void Translate_CheckIfStatmentTwice_SuccessConvertedToIfMysql()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => (model.Name == null ? true : false))
+            .Where(model => (model.InsertedAt > new DateTime(2001,1,1) ? true : false));
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING IF((Name IS NULL),@P1000,@P1001) AND IF((InsertedAt > @P1002),@P1003,@P1004)", result.HavingSql);
+    }
 }
