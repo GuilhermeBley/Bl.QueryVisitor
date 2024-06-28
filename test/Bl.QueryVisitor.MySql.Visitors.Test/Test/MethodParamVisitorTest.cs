@@ -148,7 +148,7 @@ public class MethodParamVisitorTest
     }
 
     [Fact]
-    public void Translate_CheckDateYear_SuccessMonthFunc()
+    public void Translate_CheckDateMonth_SuccessMonthFunc()
     {
         var query = Enumerable.Empty<FakeComplexModel>()
             .AsQueryable()
@@ -162,7 +162,7 @@ public class MethodParamVisitorTest
     }
 
     [Fact]
-    public void Translate_CheckDateYear_SuccessDayFunc()
+    public void Translate_CheckDateDay_SuccessDayFunc()
     {
         var query = Enumerable.Empty<FakeComplexModel>()
             .AsQueryable()
@@ -173,5 +173,19 @@ public class MethodParamVisitorTest
         var result = visitor.Translate(query.Expression);
 
         Assert.Equal("\nHAVING (Day(DateTimeOffset) > @P1000)", result.HavingSql);
+    }
+
+    [Fact]
+    public void Translate_CheckNullValue_SuccessNullCollected()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Name != null);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (Name IS NOT NULL)", result.HavingSql);
     }
 }

@@ -246,13 +246,14 @@ public class SimpleQueryTranslator
     {
         IQueryable? q = c.Value as IQueryable;
 
-        if (q == null && c.Value == null)
+        if (q is null && c.Value is null)
         {
-            var parameter = _parameters.AddNextParam(null);
-
-            _whereBuilder.Append(parameter);
+            //
+            // Null values can't be expressed in variables
+            //
+            _whereBuilder.Append("NULL");
         }
-        else if (q == null)
+        else if (q is null)
         {
             ArgumentNullException.ThrowIfNull(c.Value);
 
