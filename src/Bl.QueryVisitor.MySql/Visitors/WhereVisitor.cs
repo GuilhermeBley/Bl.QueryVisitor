@@ -1,4 +1,5 @@
-﻿using Bl.QueryVisitor.Visitors;
+﻿using Bl.QueryVisitor.MySql.Providers;
+using Bl.QueryVisitor.Visitors;
 using System.Linq.Expressions;
 using System.Text;
 
@@ -12,16 +13,13 @@ internal class WhereVisitor
     /// </summary>
     private readonly StringBuilder _whereBuilder = new();
     private readonly ParamDictionary _parameters;
-    /// <summary>
-    /// These items are used to replace the 'Property.Name', because it can improve by using index 
-    /// </summary>
-    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
     public WhereVisitor(
         ParamDictionary parameters,
-        IReadOnlyDictionary<string, string> renamedProperties)
+        ColumnNameProvider columnNameProvider)
     {
         _parameters = parameters;
-        _renamedProperties = renamedProperties;
+        _columnNameProvider = columnNameProvider;
     }
 
     public string TranslateWhere(Expression expression)
@@ -32,7 +30,7 @@ internal class WhereVisitor
     }
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        var methodVisitor = new MethodParamVisitor(_parameters, _renamedProperties);
+        var methodVisitor = new MethodParamVisitor(_parameters, _columnNameProvider);
 
         var sql = methodVisitor.TranslateMethod(node);
 
@@ -60,12 +58,13 @@ internal class WhereVisitor
 
     protected override Expression VisitConditional(ConditionalExpression node)
     {
+        // MYSQL FUNCTION: IF(Test, True, False)
         _whereBuilder.Append("IF(");
         Visit(StripQuotes(node.Test));
         _whereBuilder.Append(',');
-        Visit(StripQuotes(node.IfFalse));
-        _whereBuilder.Append(',');
         Visit(StripQuotes(node.IfTrue));
+        _whereBuilder.Append(',');
+        Visit(StripQuotes(node.IfFalse));
         _whereBuilder.Append(")");
 
         return node;
@@ -195,10 +194,7 @@ internal class WhereVisitor
     {
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
-            var columnName = _renamedProperties
-                .TryGetValue(m.Member.Name, out var renamedValue)
-                    ? renamedValue
-                    : m.Member.Name;
+            var columnName = _columnNameProvider.GetColumnName(m.Member.Name);
 
             _whereBuilder.Append(columnName);
             return m;
@@ -225,7 +221,7 @@ internal class WhereVisitor
         }
 
         if (m.NodeType == ExpressionType.MemberAccess &&
-            SqlMethodParameterTranslator.TryTranslate(m, _renamedProperties, out var sqlFunctionFound))
+            SqlMethodParameterTranslator.TryTranslate(m, _columnNameProvider, out var sqlFunctionFound))
         {
             _whereBuilder.Append(sqlFunctionFound);
 

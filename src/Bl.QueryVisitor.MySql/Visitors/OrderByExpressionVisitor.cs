@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using Bl.QueryVisitor.MySql.Providers;
+using System.Linq.Expressions;
 using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
@@ -9,14 +10,11 @@ namespace Bl.QueryVisitor.Visitors;
 internal class OrderByExpressionVisitor
     : ExpressionVisitor
 {
-    /// <summary>
-    /// These items are used to replace the 'Property.Name', because it can improve by using index 
-    /// </summary>
-    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
 
-    public OrderByExpressionVisitor(IReadOnlyDictionary<string, string> renamedProperties)
+    public OrderByExpressionVisitor(ColumnNameProvider columnNameProvider)
     {
-        _renamedProperties = renamedProperties;
+        _columnNameProvider = columnNameProvider;
     }
 
     private readonly List<MethodCallExpression> _orderCalls = new();
@@ -142,10 +140,7 @@ internal class OrderByExpressionVisitor
         {
             string newOrder;
 
-            var columnName = _renamedProperties
-               .TryGetValue(body.Member.Name, out var renamedValue)
-                   ? renamedValue
-                   : body.Member.Name;
+            var columnName = _columnNameProvider.GetColumnName(body.Member.Name);
 
             if (builder.Length == 0)
                 newOrder = string.Format("{0} {1}", columnName, order);

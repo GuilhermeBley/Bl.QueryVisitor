@@ -24,19 +24,24 @@ public class TestController : ControllerBase
 
     [HttpGet(Name = "GetWeatherForecast")]
     [EnableQuery(EnsureStableOrdering = false)]
-    public ActionResult<IQueryable<FakeModel>> Get()
+    public ActionResult<IQueryable<FakeModel>> Get(
+        [FromServices] ODataQueryOptions<FakeModel> options)
     {
         var queryable =
             CreateConnection()
             .SqlAsQueryable<FakeModel>(new CommandDefinition(
                 "SELECT * FROM `queryable-test`.FakeModel"));
         
-        return Ok(queryable);
+        var result = options.ApplyTo(queryable);
+        _logger.LogInformation(
+            result.ToSqlText());
+        return Ok(result);
     }
 
     [HttpGet("2")]
     [EnableQuery(EnsureStableOrdering = false)]
-    public ActionResult<IQueryable<FakeModel>> Get2()
+    public ActionResult<IQueryable<FakeModel>> Get2(
+        [FromServices]ODataQueryOptions<FakeModel> options)
     {
         var queryable =
             Enumerable.Range(0,20)
@@ -44,7 +49,10 @@ public class TestController : ControllerBase
             .ToList()
             .AsQueryable<FakeModel>();
 
-        return Ok(queryable);
+        var result = options.ApplyTo(queryable);
+        _logger.LogInformation(
+            result.ToSqlText());
+        return Ok(result);
     }
 
     private MySqlConnection CreateConnection()

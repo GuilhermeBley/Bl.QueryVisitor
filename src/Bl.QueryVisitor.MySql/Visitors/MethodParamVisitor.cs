@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using Bl.QueryVisitor.MySql.Providers;
+using System.Linq.Expressions;
 using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
@@ -9,16 +10,13 @@ internal class MethodParamVisitor
     private readonly ParamDictionary _parameters;
     private StringBuilder _builder = new();
 
-    /// <summary>
-    /// These items are used to replace the 'Property.Name', because it can improve by using index 
-    /// </summary>
-    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
-    public MethodParamVisitor(ParamDictionary parameters, IReadOnlyDictionary<string, string> renamedProperties)
+    public MethodParamVisitor(ParamDictionary parameters, ColumnNameProvider columnNameProvider)
     {
         _parameters = parameters;
-        _renamedProperties = renamedProperties;
+        _columnNameProvider = columnNameProvider;
     }
 
     public string TranslateMethod(Expression? expression)
@@ -180,10 +178,7 @@ internal class MethodParamVisitor
     {
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
-            var columnName = _renamedProperties
-                .TryGetValue(m.Member.Name, out var renamedValue)
-                    ? renamedValue
-                    : m.Member.Name;
+            var columnName = _columnNameProvider.GetColumnName(m.Member.Name);
 
             _builder.Append(columnName);
             return m;

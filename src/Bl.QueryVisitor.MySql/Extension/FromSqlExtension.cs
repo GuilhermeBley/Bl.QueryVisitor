@@ -177,8 +177,11 @@ public static class FromSqlExtension
             var result = translator.Translate(Expression);
 
             var completeSql = ResultWriter.WriteSql(_commandDefinition.CommandText, result);
-
-            return completeSql;
+            
+            return string.Concat(
+                string.Join(',', translator.Parameters),
+                '\n',
+                completeSql);
         }
     }
 
