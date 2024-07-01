@@ -98,7 +98,7 @@ internal class MethodParamVisitor
             return node;
         }
 
-        if (node.Method.Name == "Contains")
+        if (node.Method.Name == "Contains" && node.Arguments.Count == 1)
         {
             _builder.Append('(');
 
@@ -109,6 +109,52 @@ internal class MethodParamVisitor
             _builder.Append("CONCAT('%',");
             base.Visit(node.Arguments[0]);
             _builder.Append(",'%')");
+
+            _builder.Append(')');
+
+            return node;
+        }
+
+        if (node.Method.Name == "Contains" && node.Arguments.Count == 2)
+        {
+            if (node.Arguments[1] is not MemberExpression columnNameExp)
+                throw new InvalidOperationException($"Column name was not found in expression {node}.");
+
+            var arrayValuesDelegate = 
+                Expression.Lambda(node.Arguments[0]).Compile();
+
+            var arrayValues = arrayValuesDelegate.DynamicInvoke() 
+                as System.Collections.IEnumerable
+                ?? Enumerable.Empty<object>();
+
+            List<object> inArguments = new();
+            foreach (var arg in arrayValues)
+            {
+                inArguments.Add(arg);
+            }
+
+            if (!inArguments.Any())
+            {
+                //
+                // Empty array, it's not possible to use 'IN' with an empty array.
+                //
+                return node;
+            }
+
+            // column name
+            _builder.Append(
+                _columnNameProvider.GetColumnName(columnNameExp.Member.Name));
+            
+            _builder.Append(" IN (");
+
+            bool paramsStarted = false;
+            foreach (var arg in inArguments)
+            {
+                if (paramsStarted)
+                    _builder.Append(',');
+                VisitConstant(Expression.Constant(arg));
+                paramsStarted = true;
+            }
 
             _builder.Append(')');
 
