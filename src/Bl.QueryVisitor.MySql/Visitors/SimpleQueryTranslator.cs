@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Providers;
 using Bl.QueryVisitor.MySql.Visitors;
 using System.Collections.Immutable;
 using System.Linq.Expressions;
@@ -29,6 +30,7 @@ public class SimpleQueryTranslator
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
 
     public IItemTranslator ItemTranslator => _selectVisitor;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
@@ -46,6 +48,7 @@ public class SimpleQueryTranslator
     public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary)
     {
         _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
+        _columnNameProvider = new(_renamedProperties);
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -56,7 +59,7 @@ public class SimpleQueryTranslator
         _skip = null;
         _take = null;
 
-        var orderResult = new OrderByExpressionVisitor(_renamedProperties).Translate(expression);
+        var orderResult = new OrderByExpressionVisitor(_columnNameProvider).Translate(expression);
 
         this.Visit(orderResult.Others);
 
@@ -90,7 +93,7 @@ public class SimpleQueryTranslator
                 _whereBuilder.Append(" AND ");
             }
 
-            var whereTranslator = new WhereVisitor(parameters: _parameters, renamedProperties: _renamedProperties);
+            var whereTranslator = new WhereVisitor(parameters: _parameters, columnNameProvider: _columnNameProvider);
 
             _whereBuilder.Append(whereTranslator.TranslateWhere(lambda.Body));
 
@@ -234,5 +237,24 @@ public class SimpleQueryTranslator
         var res = instantiator();
 
         return Expression.Constant(res);
+    }
+
+    private class QuotesColumnNameProvider : ColumnNameProvider
+    {
+        public QuotesColumnNameProvider(IReadOnlyDictionary<string, string> directColumns) : base(directColumns)
+        {
+        }
+
+        protected override string TransformColumn(string column)
+        {
+            const char MYSQL_SEPARATOR = '`';
+
+            if (column.StartsWith(MYSQL_SEPARATOR))
+            {
+                return column;
+            }
+
+            return string.Concat(MYSQL_SEPARATOR, column, MYSQL_SEPARATOR);
+        }
     }
 }

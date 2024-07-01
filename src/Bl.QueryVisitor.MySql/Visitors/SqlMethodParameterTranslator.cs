@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using Bl.QueryVisitor.MySql.Providers;
+using System.Linq.Expressions;
 
 namespace Bl.QueryVisitor.MySql.Visitors;
 
@@ -18,12 +19,12 @@ internal class SqlMethodParameterTranslator
             {nameof(DateTime.Second), "Second"},
         };
 
-    private IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
     private string? _functionName;
 
-    public SqlMethodParameterTranslator(IReadOnlyDictionary<string, string> renamedProperties)
+    public SqlMethodParameterTranslator(ColumnNameProvider columnNameProvider)
     {
-        _renamedProperties = renamedProperties;
+        _columnNameProvider = columnNameProvider;
     }
 
     protected override Expression VisitMember(MemberExpression node)
@@ -35,10 +36,7 @@ internal class SqlMethodParameterTranslator
         {
             var fieldName = funcMember.Member.Name;
 
-            var columnName = _renamedProperties
-                .TryGetValue(fieldName, out var renamedValue)
-                    ? renamedValue
-                    : fieldName;
+            var columnName = _columnNameProvider.GetColumnName(fieldName);
 
             _functionName = string.Concat(
                 sqlFunction,
@@ -55,10 +53,10 @@ internal class SqlMethodParameterTranslator
 
     public static bool TryTranslate(
         Expression node,
-        IReadOnlyDictionary<string, string> renamedProperties,
+        ColumnNameProvider columnNameProvider,
         out string? translatedFunctionName)
     {
-        var visitor = new SqlMethodParameterTranslator(renamedProperties);
+        var visitor = new SqlMethodParameterTranslator(columnNameProvider);
 
         visitor.Visit(node);
 
