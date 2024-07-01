@@ -41,7 +41,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (Name = CONCAT(@P1000,@P1001,@P1002))", result.HavingSql);
+        Assert.Equal("\nHAVING (`Name` = CONCAT(@P1000,@P1001,@P1002))", result.HavingSql);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class MethodParamVisitorTest
 
         Assert.Equal("abc", result.Parameters.ElementAt(0).Value);
         Assert.Equal("ax", result.Parameters.ElementAt(1).Value);
-        Assert.Equal("\nHAVING (Name = CONCAT(@P1000,@P1001))", result.HavingSql);
+        Assert.Equal("\nHAVING (`Name` = CONCAT(@P1000,@P1001))", result.HavingSql);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (Name LIKE CONCAT('%',@P1000,'%')) AND (Name = CONCAT(@P1001,@P1002,@P1003))", result.HavingSql);
+        Assert.Equal("\nHAVING (`Name` LIKE CONCAT('%',@P1000,'%')) AND (`Name` = CONCAT(@P1001,@P1002,@P1003))", result.HavingSql);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (InsertedAt = NOW())", result.HavingSql);
+        Assert.Equal("\nHAVING (`InsertedAt` = NOW())", result.HavingSql);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (InsertedAt = UTC_TIMESTAMP())", result.HavingSql);
+        Assert.Equal("\nHAVING (`InsertedAt` = UTC_TIMESTAMP())", result.HavingSql);
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (MyGuid = UUID())", result.HavingSql);
+        Assert.Equal("\nHAVING (`MyGuid` = UUID())", result.HavingSql);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (Year(DateTimeOffset) > @P1000)", result.HavingSql);
+        Assert.Equal("\nHAVING (Year(`DateTimeOffset`) > @P1000)", result.HavingSql);
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (Month(DateTimeOffset) > @P1000)", result.HavingSql);
+        Assert.Equal("\nHAVING (Month(`DateTimeOffset`) > @P1000)", result.HavingSql);
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (Day(DateTimeOffset) > @P1000)", result.HavingSql);
+        Assert.Equal("\nHAVING (Day(`DateTimeOffset`) > @P1000)", result.HavingSql);
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (Name IS NOT NULL)", result.HavingSql);
+        Assert.Equal("\nHAVING (`Name` IS NOT NULL)", result.HavingSql);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING IF((Name IS NULL),@P1000,@P1001)", result.HavingSql);
+        Assert.Equal("\nHAVING IF((`Name` IS NULL),@P1000,@P1001)", result.HavingSql);
     }
 
     [Fact]
@@ -215,6 +215,6 @@ public class MethodParamVisitorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING IF((Name IS NULL),@P1000,@P1001) AND IF((InsertedAt > @P1002),@P1003,@P1004)", result.HavingSql);
+        Assert.Equal("\nHAVING IF((`Name` IS NULL),@P1000,@P1001) AND IF((`InsertedAt` > @P1002),@P1003,@P1004)", result.HavingSql);
     }
 }

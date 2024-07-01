@@ -48,7 +48,7 @@ public class SimpleQueryTranslator
     public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary)
     {
         _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
-        _columnNameProvider = new(_renamedProperties);
+        _columnNameProvider = new QuotesColumnNameProvider(_renamedProperties);
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -245,16 +245,26 @@ public class SimpleQueryTranslator
         {
         }
 
+        /// <summary>
+        /// This column transformation basically transforms the column "ID" to "`ID`".
+        /// If the column is direct, the value will not be changed because values that contain a schema separator won't be mapped.
+        /// </summary>
         protected override string TransformColumn(string column)
         {
-            const char MYSQL_SEPARATOR = '`';
+            const char MYSQL_COLUMN_NAME_SEPARATOR = '`';
+            const char MYSQL_SCHEMA_SEPARATOR = '.';
 
-            if (column.StartsWith(MYSQL_SEPARATOR))
+            if (column.Contains(MYSQL_COLUMN_NAME_SEPARATOR, StringComparison.OrdinalIgnoreCase))
             {
                 return column;
             }
 
-            return string.Concat(MYSQL_SEPARATOR, column, MYSQL_SEPARATOR);
+            if (column.Contains(MYSQL_SCHEMA_SEPARATOR, StringComparison.OrdinalIgnoreCase))
+            {
+                return column;
+            }
+
+            return string.Concat(MYSQL_COLUMN_NAME_SEPARATOR, column, MYSQL_COLUMN_NAME_SEPARATOR);
         }
     }
 }

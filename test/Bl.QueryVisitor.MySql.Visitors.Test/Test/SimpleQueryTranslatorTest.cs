@@ -55,7 +55,7 @@ public class SimpleQueryTranslatorTest
 
         var queryString = visitor.Translate(query.Expression).HavingSql;
 
-        Assert.Equal("\nHAVING (InsertedAt = @P1000)", queryString, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("\nHAVING (`InsertedAt` = @P1000)", queryString, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class SimpleQueryTranslatorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nORDER BY Name ASC, Id ASC, InsertedAt DESC", result.OrderBySql);
+        Assert.Equal("\nORDER BY `Name` ASC, `Id` ASC, `InsertedAt` DESC", result.OrderBySql);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class SimpleQueryTranslatorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nORDER BY InsertedAt DESC, Id ASC, Name ASC, Id DESC", result.OrderBySql);
+        Assert.Equal("\nORDER BY `InsertedAt` DESC, `Id` ASC, `Name` ASC, `Id` DESC", result.OrderBySql);
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public class SimpleQueryTranslatorTest
 
         var translation = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nORDER BY Id ASC, Name ASC", translation.OrderBySql);
+        Assert.Equal("\nORDER BY `Id` ASC, `Name` ASC", translation.OrderBySql);
     }
 
     [Fact]
@@ -333,7 +333,7 @@ public class SimpleQueryTranslatorTest
 
         var result = translator.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (MyGuid = @P1000) AND (DateTimeOffset = @P1001)", result.HavingSql);
+        Assert.Equal("\nHAVING (`MyGuid` = @P1000) AND (`DateTimeOffset` = @P1001)", result.HavingSql);
     }
 
     [Fact]
@@ -349,6 +349,6 @@ public class SimpleQueryTranslatorTest
 
         var result = translator.Translate(query.Expression);
 
-        Assert.Equal("\nHAVING (MyGuid = @P1000) AND (MyGuid = @P1001) AND (DateTimeOffset = @P1002)", result.HavingSql);
+        Assert.Equal("\nHAVING (`MyGuid` = @P1000) AND (`MyGuid` = @P1001) AND (`DateTimeOffset` = @P1002)", result.HavingSql);
     }
 }
