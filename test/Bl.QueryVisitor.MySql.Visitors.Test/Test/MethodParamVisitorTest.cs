@@ -233,4 +233,20 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING `Name` IN (@P1000,@P1001,@P1002)", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckContainsWithIntArray_ArrayGeneratesInOperator()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => valuesMatch.Contains(model.Id));
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING `Id` IN (@P1000,@P1001,@P1002)", result.HavingSql);
+    }
 }
