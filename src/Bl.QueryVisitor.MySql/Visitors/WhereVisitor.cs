@@ -60,12 +60,13 @@ internal class WhereVisitor
 
     protected override Expression VisitConditional(ConditionalExpression node)
     {
+        // MYSQL FUNCTION: IF(Test, True, False)
         _whereBuilder.Append("IF(");
         Visit(StripQuotes(node.Test));
         _whereBuilder.Append(',');
-        Visit(StripQuotes(node.IfFalse));
-        _whereBuilder.Append(',');
         Visit(StripQuotes(node.IfTrue));
+        _whereBuilder.Append(',');
+        Visit(StripQuotes(node.IfFalse));
         _whereBuilder.Append(")");
 
         return node;

@@ -31,6 +31,7 @@ public class SimpleQueryTranslator
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
 
     public IItemTranslator ItemTranslator => _selectVisitor;
+    public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
     public SimpleQueryTranslator()
         : this(Enumerable.Empty<KeyValuePair<string, string>>())
