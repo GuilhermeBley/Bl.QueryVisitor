@@ -249,4 +249,20 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING `Id` IN (@P1000,@P1001,@P1002)", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckMultiply_MultiplyOperatorApplied()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id * 2 == 4);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING ((`Id` * @P1000) = @P1001)", result.HavingSql);
+    }
 }

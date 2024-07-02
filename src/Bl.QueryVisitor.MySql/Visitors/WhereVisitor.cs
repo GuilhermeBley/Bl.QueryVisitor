@@ -1,6 +1,8 @@
 ﻿using Bl.QueryVisitor.MySql.Providers;
 using Bl.QueryVisitor.Visitors;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 
 namespace Bl.QueryVisitor.MySql.Visitors;
@@ -145,6 +147,22 @@ internal class WhereVisitor
                 _whereBuilder.Append(" >= ");
                 break;
 
+            case ExpressionType.Multiply:
+                _whereBuilder.Append(" * ");
+                break;
+
+            case ExpressionType.Subtract:
+                _whereBuilder.Append(" - ");
+                break;
+
+            case ExpressionType.Add:
+                _whereBuilder.Append(" + ");
+                break;
+
+            case ExpressionType.Divide:
+                _whereBuilder.Append(" / ");
+                break;
+
             default:
                 throw new NotSupportedException(string.Format("The binary operator '{0}' is not supported", b.NodeType));
 
@@ -169,23 +187,18 @@ internal class WhereVisitor
 
     protected override Expression VisitConstant(ConstantExpression c)
     {
-        IQueryable? q = c.Value as IQueryable;
-
-        if (q is null && c.Value is null)
+        if (c.Value is null)
         {
             //
             // Null values can't be expressed in variables
             //
             _whereBuilder.Append("NULL");
+            return c;
         }
-        else if (q is null)
-        {
-            ArgumentNullException.ThrowIfNull(c.Value);
 
-            var parameter = _parameters.AddNextParam(c.Value);
+        var parameter = _parameters.AddNextParam(c.Value);
 
-            _whereBuilder.Append(parameter);
-        }
+        _whereBuilder.Append(parameter);
 
         return c;
     }
@@ -228,7 +241,16 @@ internal class WhereVisitor
             return m;
         }
 
-        throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
+        if (m.Expression is not null)
+        {
+            var delegateLamb =Expression.Lambda(m).Compile();
+
+            var result = delegateLamb.DynamicInvoke();
+
+            return VisitConstant(Expression.Constant(result));
+        }
+
+        throw new InvalidOperationException($"Member {m} can't be parsed.");
     }
 
     protected bool IsNullConstant(Expression exp)

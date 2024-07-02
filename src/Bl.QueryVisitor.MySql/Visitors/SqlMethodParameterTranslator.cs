@@ -32,7 +32,8 @@ internal class SqlMethodParameterTranslator
         var functionName = node.Member.Name;
 
         if (node.Expression is MemberExpression funcMember &&
-            _sqlFunctions.TryGetValue(functionName, out var sqlFunction))
+            _sqlFunctions.TryGetValue(functionName, out var sqlFunction) &&
+            funcMember.Expression?.NodeType == ExpressionType.Parameter)
         {
             var fieldName = funcMember.Member.Name;
 
@@ -48,7 +49,7 @@ internal class SqlMethodParameterTranslator
             return node;
         }
 
-        return Visit(node);
+        return node;
     }
 
     public static bool TryTranslate(
