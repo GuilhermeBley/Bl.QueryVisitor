@@ -60,6 +60,19 @@ internal class WhereVisitor
 
     protected override Expression VisitConditional(ConditionalExpression node)
     {
+        var condition = IfConstVisitor.EvaluateIfExpression(node.Test);
+
+        if (condition == true)
+        {
+            Visit(StripQuotes(node.IfTrue));
+            return node;
+        }
+        else if (condition == false)
+        {
+            Visit(StripQuotes(node.IfFalse));
+            return node;
+        }
+
         // MYSQL FUNCTION: IF(Test, True, False)
         _whereBuilder.Append("IF(");
         Visit(StripQuotes(node.Test));

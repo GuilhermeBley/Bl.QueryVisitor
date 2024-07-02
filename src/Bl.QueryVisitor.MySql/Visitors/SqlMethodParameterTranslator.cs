@@ -1,5 +1,6 @@
 ﻿using Bl.QueryVisitor.MySql.Providers;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 
 namespace Bl.QueryVisitor.MySql.Visitors;
 
@@ -27,17 +28,27 @@ internal class SqlMethodParameterTranslator
         _columnNameProvider = columnNameProvider;
     }
 
+    protected override Expression VisitParameter(ParameterExpression node)
+    {
+        return base.VisitParameter(node);
+    }
+
     protected override Expression VisitMember(MemberExpression node)
     {
         var functionName = node.Member.Name;
 
         if (node.Expression is MemberExpression funcMember &&
-            _sqlFunctions.TryGetValue(functionName, out var sqlFunction) &&
-            funcMember.Expression?.NodeType == ExpressionType.Parameter)
+            _sqlFunctions.TryGetValue(functionName, out var sqlFunction))
         {
-            var fieldName = funcMember.Member.Name;
+            var columnName = FirstParameterVisitor.GetParameterName(funcMember, _columnNameProvider);
 
-            var columnName = _columnNameProvider.GetColumnName(fieldName);
+            if (columnName is null)
+            {
+                //
+                // Can't get the property name
+                //
+                return node;
+            }
 
             _functionName = string.Concat(
                 sqlFunction,

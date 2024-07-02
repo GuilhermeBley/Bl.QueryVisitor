@@ -204,6 +204,20 @@ public class MethodParamVisitorTest
     }
 
     [Fact]
+    public void Translate_CheckIfConstStatment_SuccessConvertedToIfMysql()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => ("value" == null ? true : false));
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING @P1000", result.HavingSql);
+    }
+
+    [Fact]
     public void Translate_CheckIfStatmentTwice_SuccessConvertedToIfMysql()
     {
         var query = Enumerable.Empty<FakeModel>()
@@ -280,5 +294,21 @@ public class MethodParamVisitorTest
         var result = visitor.Translate(query.Expression);
         
         Assert.Equal("\nHAVING (`DateTimeOffsetWithUnderlineType` > @P1000)", result.HavingSql);
+    }
+
+    [Fact]
+    public void Translate_CheckUsingNullableValuePropertyWithMethod_ParsedToMemberName()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeComplexModel>()
+            .AsQueryable()
+            .Where(model => model.DateTimeOffsetWithUnderlineType!.Value.Year > 2024);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+        
+        Assert.Equal("\nHAVING (Year(`DateTimeOffsetWithUnderlineType`) > @P1000)", result.HavingSql);
     }
 }
