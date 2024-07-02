@@ -60,6 +60,19 @@ internal class WhereVisitor
 
     protected override Expression VisitConditional(ConditionalExpression node)
     {
+        var condition = IfConstVisitor.EvaluateIfExpression(node.Test);
+
+        if (condition == true)
+        {
+            Visit(StripQuotes(node.IfTrue));
+            return node;
+        }
+        else if (condition == false)
+        {
+            Visit(StripQuotes(node.IfFalse));
+            return node;
+        }
+
         // MYSQL FUNCTION: IF(Test, True, False)
         _whereBuilder.Append("IF(");
         Visit(StripQuotes(node.Test));
@@ -72,20 +85,6 @@ internal class WhereVisitor
         return node;
     }
 
-    private static Expression StripQuotes(Expression e)
-    {
-        while (e.NodeType == ExpressionType.Quote)
-        {
-            e = ((UnaryExpression)e).Operand;
-        }
-        return e;
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="b"></param>
-    /// <returns></returns>
     protected override Expression VisitBinary(BinaryExpression b)
     {
         _whereBuilder.Append("(");
@@ -205,6 +204,8 @@ internal class WhereVisitor
 
     protected override Expression VisitMember(MemberExpression m)
     {
+        m = StripNullableValue(m);
+
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
             var columnName = _columnNameProvider.GetColumnName(m.Member.Name);
@@ -253,8 +254,31 @@ internal class WhereVisitor
         throw new InvalidOperationException($"Member {m} can't be parsed.");
     }
 
-    protected bool IsNullConstant(Expression exp)
+    private static bool IsNullConstant(Expression exp)
     {
         return (exp.NodeType == ExpressionType.Constant && ((ConstantExpression)exp).Value == null);
+    }
+
+    /// <summary>
+    /// Strip member value from a member expression
+    /// </summary>
+    private static MemberExpression StripNullableValue(MemberExpression e)
+    {
+        if (e.Member.Name.Equals("Value", StringComparison.OrdinalIgnoreCase) &&
+            e.Expression is MemberExpression member)
+        {
+            return member;
+        }
+
+        return e;
+    }
+
+    private static Expression StripQuotes(Expression e)
+    {
+        while (e.NodeType == ExpressionType.Quote)
+        {
+            e = ((UnaryExpression)e).Operand;
+        }
+        return e;
     }
 }

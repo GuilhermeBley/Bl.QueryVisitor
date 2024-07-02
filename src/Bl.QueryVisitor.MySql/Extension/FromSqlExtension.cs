@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Exceptions;
 using Bl.QueryVisitor.Visitors;
 using Dapper;
 using System.Collections;
@@ -38,7 +39,7 @@ public static class FromSqlExtension
             connection,
             commandDefinition: new CommandDefinition(
                 sql,
-                parameters : parameters,
+                parameters: parameters,
                 transaction: transaction,
                 cancellationToken: cancellationToken));
 
@@ -177,7 +178,7 @@ public static class FromSqlExtension
             var result = translator.Translate(Expression);
 
             var completeSql = ResultWriter.WriteSql(_commandDefinition.CommandText, result);
-            
+
             return string.Concat(
                 string.Join(',', translator.Parameters),
                 '\n',
@@ -210,10 +211,10 @@ public static class FromSqlExtension
 
         public IQueryable CreateQuery(Expression expression)
             => new InternalQueryable<object>(
-                dbConnection: _dbConnection, 
-                commandDefinition: _commandDefinition, 
+                dbConnection: _dbConnection,
+                commandDefinition: _commandDefinition,
                 model: this._model,
-                expression: expression, 
+                expression: expression,
                 renamedProperties: _renamedProperties);
 
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
@@ -258,8 +259,8 @@ public static class FromSqlExtension
                     commandType: _commandDefinition.CommandType,
                     flags: _commandDefinition.Flags,
                     cancellationToken: _commandDefinition.CancellationToken);
-            
-            var entities = ExecuteAndTransformData(_dbConnection, newCommand, resultType, translator.ItemTranslator);
+
+            var entities = ExecuteAndTransformData(_dbConnection, expression, newCommand, resultType, translator.ItemTranslator);
 
             return (TResult)entities;
         }
@@ -284,7 +285,7 @@ public static class FromSqlExtension
 
             dbArgs.AddDynamicParams(_commandDefinition.Parameters);
 
-            CancellationTokenSource cts = 
+            CancellationTokenSource cts =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _commandDefinition.CancellationToken);
 
             var newCommand =
@@ -296,11 +297,12 @@ public static class FromSqlExtension
                     commandType: _commandDefinition.CommandType,
                     flags: _commandDefinition.Flags,
                     cancellationToken: cts.Token);
-            
+
             return GetListTaskToExecuteAndTransformDataAsync<TResult>(
-                _dbConnection, 
-                newCommand, 
-                resultType, 
+                _dbConnection,
+                expression,
+                newCommand,
+                resultType,
                 translator.ItemTranslator);
         }
 
@@ -310,6 +312,7 @@ public static class FromSqlExtension
         /// <typeparam name="TResult">Task of something</typeparam>
         private static TResult GetListTaskToExecuteAndTransformDataAsync<TResult>(
             IDbConnection connection,
+            Expression expression,
             CommandDefinition commandDefinition,
             Type entityType,
             IItemTranslator translator)
@@ -325,7 +328,7 @@ public static class FromSqlExtension
                         .MakeGenericMethod(listType)
                     ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
 
-                return (TResult?)executeAndTransformDataAsync.Invoke(null, new object[] { connection, commandDefinition, entityType, translator })
+                return (TResult?)executeAndTransformDataAsync.Invoke(null, new object[] { connection, expression, commandDefinition, entityType, translator })
                     ?? throw new InvalidOperationException("Invalid 'TResult'.");
             }
             catch (AggregateException e)
@@ -340,47 +343,64 @@ public static class FromSqlExtension
 
         private static async Task<T> ExecuteAndTransformDataAsync<T>(
             IDbConnection connection,
+            Expression expression,
             CommandDefinition commandDefinition,
             Type entityType,
             IItemTranslator translator)
         {
-            var entitiesCollection
-                = await ExecuteDapperQueryAsync(connection, commandDefinition, entityType);
-
-            var expectedType = typeof(T).GetGenericArguments()
-                .First(); // first type argument of the list
-                
-            IList results = CreateList(expectedType, entitiesCollection.Count());
-            foreach (var item in entitiesCollection)
+            try
             {
-                var translatedItem= translator.TransformItem(item);
+                var entitiesCollection
+                    = await ExecuteDapperQueryAsync(connection, commandDefinition, entityType);
 
-                results.Add(translatedItem);
+                var expectedType = typeof(T).GetGenericArguments()
+                    .First(); // first type argument of the list
+
+                IList results = CreateList(expectedType, entitiesCollection.Count());
+                foreach (var item in entitiesCollection)
+                {
+                    var translatedItem = translator.TransformItem(item);
+
+                    results.Add(translatedItem);
+                }
+
+                return (T)results;
             }
-
-            return (T)results;
+            catch (Exception e)
+            {
+                throw new QueryException("Failed to execute command.", expression, commandDefinition.CommandText, e);
+            }
         }
 
         private static IEnumerable ExecuteAndTransformData(
             IDbConnection connection,
+            Expression expression,
             CommandDefinition commandDefinition,
             Type entityType,
             IItemTranslator translator)
         {
-            var entitiesCollection = ExecuteDapperQuery(connection, commandDefinition, entityType);
-
-            IList results = CreateList(entityType, entitiesCollection.Count());
-            foreach (var item in entitiesCollection)
+            try
             {
-                results.Add(translator.TransformItem(item));
-            }
 
-            return results;
+                var entitiesCollection = ExecuteDapperQuery(connection, commandDefinition, entityType);
+
+                IList results = CreateList(entityType, entitiesCollection.Count());
+                foreach (var item in entitiesCollection)
+                {
+                    results.Add(translator.TransformItem(item));
+                }
+
+                return results;
+            }
+            catch (Exception e)
+            {
+                throw new QueryException("Failed to execute command.", expression, commandDefinition.CommandText, e);
+            }
         }
 
         private static Task<IEnumerable<object>> ExecuteDapperQueryAsync(
-            IDbConnection connection, 
-            CommandDefinition commandDefinition, 
+            IDbConnection connection,
+            CommandDefinition commandDefinition,
             Type entityType)
             => connection.QueryAsync(entityType, commandDefinition);
 
@@ -396,7 +416,7 @@ public static class FromSqlExtension
                     typeof(SqlMapper).GetMethod(nameof(Dapper.SqlMapper.Query), genericParameterCount: 1, new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
                         .MakeGenericMethod(entityType)
                     ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
-                
+
                 return (IEnumerable<object>?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
                     ?? throw new InvalidOperationException("Invalid 'TResult'.");
             }
@@ -413,7 +433,7 @@ public static class FromSqlExtension
         private static IList CreateList(Type entityType, int count)
         {
             Type listType = typeof(List<>).MakeGenericType(entityType);
-            IList? list = (IList?)Activator.CreateInstance(listType,new object?[] { count });
+            IList? list = (IList?)Activator.CreateInstance(listType, new object?[] { count });
 
             return list ?? throw new InvalidOperationException();
         }

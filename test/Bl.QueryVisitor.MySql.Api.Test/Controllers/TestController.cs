@@ -62,6 +62,7 @@ public class TestController : ControllerBase
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public DateOnly? InsertedAtOnlyDate { get; set; }
         public DateTime InsertedAt { get; set; }
     }
 }
