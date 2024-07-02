@@ -217,4 +217,36 @@ public class MethodParamVisitorTest
 
         Assert.Equal("\nHAVING IF((`Name` IS NULL),@P1000,@P1001) AND IF((`InsertedAt` > @P1002),@P1003,@P1004)", result.HavingSql);
     }
+
+    [Fact]
+    public void Translate_CheckContainsWithStringArray_ArrayGeneratesInOperator()
+    {
+        var valuesMatch = new[] { "val1", "val2", "val3" };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => valuesMatch.Contains(model.Name));
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING `Name` IN (@P1000,@P1001,@P1002)", result.HavingSql);
+    }
+
+    [Fact]
+    public void Translate_CheckContainsWithIntArray_ArrayGeneratesInOperator()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => valuesMatch.Contains(model.Id));
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING `Id` IN (@P1000,@P1001,@P1002)", result.HavingSql);
+    }
 }
