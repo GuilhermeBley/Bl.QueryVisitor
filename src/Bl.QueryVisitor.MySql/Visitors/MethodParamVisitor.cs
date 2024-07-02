@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql.Providers;
+using Bl.QueryVisitor.MySql.Visitors;
 using System.Linq.Expressions;
 using System.Text;
 
@@ -174,6 +175,15 @@ internal class MethodParamVisitor
             _builder.Append(",'%')");
 
             _builder.Append(')');
+
+            return node;
+        }
+
+        if (node.Method.Name == "Compare" && node.Arguments.Count == 2)
+        {
+            var param = FirstParameterVisitor.GetParameterName(node.Arguments[0], _columnNameProvider);
+
+            _builder.Append(param);
 
             return node;
         }

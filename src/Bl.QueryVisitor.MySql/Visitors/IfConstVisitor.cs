@@ -49,7 +49,10 @@ internal class IfConstVisitor
         return base.Visit(node);
     }
 
-    // Helper method to evaluate the expression
+    /// <summary>
+    /// Checks if the expression can be executed in memory.
+    /// If returns 'null', the expression can't be evaluated.
+    /// </summary>
     public static bool? EvaluateIfExpression(Expression expression)
     {
         var visitor = new IfConstVisitor();
