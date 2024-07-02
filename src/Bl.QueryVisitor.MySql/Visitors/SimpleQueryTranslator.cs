@@ -71,15 +71,6 @@ public class SimpleQueryTranslator
             LimitSql: NormalizeLimit());
     }
 
-    private static Expression StripQuotes(Expression e)
-    {
-        while (e.NodeType == ExpressionType.Quote)
-        {
-            e = ((UnaryExpression)e).Operand;
-        }
-        return e;
-    }
-
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
         if (node.Method.DeclaringType == typeof(Queryable) && node.Method.Name == "Where")
@@ -237,6 +228,15 @@ public class SimpleQueryTranslator
         var res = instantiator();
 
         return Expression.Constant(res);
+    }
+
+    private static Expression StripQuotes(Expression e)
+    {
+        while (e.NodeType == ExpressionType.Quote)
+        {
+            e = ((UnaryExpression)e).Operand;
+        }
+        return e;
     }
 
     private class QuotesColumnNameProvider : ColumnNameProvider
