@@ -179,15 +179,6 @@ internal class MethodParamVisitor
             return node;
         }
 
-        if (node.Method.Name == "Compare" && node.Arguments.Count == 2)
-        {
-            var param = FirstParameterVisitor.GetParameterName(node.Arguments[0], _columnNameProvider);
-
-            _builder.Append(param);
-
-            return node;
-        }
-
         if (!SqlStaticMethodsTranslator.TryTranslate(node, out var sqlMethod))
             throw new NotSupportedException(string.Format("The method '{0}' is not supported", node.Method.Name));
 

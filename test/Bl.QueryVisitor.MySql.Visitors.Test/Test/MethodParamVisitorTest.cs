@@ -297,18 +297,18 @@ public class MethodParamVisitorTest
     }
 
     [Fact]
-    public void Translate_CheckUsingNullableValuePropertyWithMethod_ParsedToMemberName()
+    public void Compare_CheckCompareMethod_SuccessConvertedToSimpleComparison()
     {
         var valuesMatch = new[] { 1, 2, 3 };
 
-        var query = Enumerable.Empty<FakeComplexModel>()
+        var query = Enumerable.Empty<FakeModel>()
             .AsQueryable()
-            .Where(model => model.DateTimeOffsetWithUnderlineType!.Value.Year > 2024);
-
+            .Where(model => string.Compare(model.Name, "ola") >= 0);
+        
         var visitor = new Visitors.SimpleQueryTranslator();
 
         var result = visitor.Translate(query.Expression);
         
-        Assert.Equal("\nHAVING (Year(`DateTimeOffsetWithUnderlineType`) > @P1000)", result.HavingSql);
+        Assert.Equal("\nHAVING (`Name` >= @P1000)", result.HavingSql);
     }
 }
