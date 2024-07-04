@@ -87,6 +87,8 @@ internal class WhereVisitor
 
     protected override Expression VisitBinary(BinaryExpression b)
     {
+        b = new BinarySimplificatorVisitor().ParseBinary(b);
+
         _whereBuilder.Append("(");
         this.Visit(b.Left);
 
