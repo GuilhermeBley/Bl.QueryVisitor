@@ -290,6 +290,31 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
+    public void Translate_CheckOrderByWithTest_TestTranslatedToIf()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .OrderBy(model => model.Name == null ? null : model.Name);
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("\nORDER BY `Name` ASC", result);
+    }
+    
+
+    [Fact]
+    public void Translate_CheckOrderByWithFalseTest_TestTranslatedToIf()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .OrderBy(model => model.Name != null ? model.Name : null);
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("\nORDER BY `Name` ASC", result);
+    }
+
+    [Fact]
     public void Translate_CheckSelectDistinctTypes_SuccessTypesCollectedButObject()
     {
         var query = Enumerable.Empty<FakeComplexModel>()
