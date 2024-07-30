@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿using Bl.QueryVisitor.MySql.Providers;
+using Bl.QueryVisitor.MySql.Visitors;
+using System.Linq.Expressions;
 using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
@@ -9,16 +11,13 @@ internal class MethodParamVisitor
     private readonly ParamDictionary _parameters;
     private StringBuilder _builder = new();
 
-    /// <summary>
-    /// These items are used to replace the 'Property.Name', because it can improve by using index 
-    /// </summary>
-    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
-    public MethodParamVisitor(ParamDictionary parameters, IReadOnlyDictionary<string, string> renamedProperties)
+    public MethodParamVisitor(ParamDictionary parameters, ColumnNameProvider columnNameProvider)
     {
         _parameters = parameters;
-        _renamedProperties = renamedProperties;
+        _columnNameProvider = columnNameProvider;
     }
 
     public string TranslateMethod(Expression? expression)
@@ -100,7 +99,7 @@ internal class MethodParamVisitor
             return node;
         }
 
-        if (node.Method.Name == "Contains")
+        if (node.Method.Name == "Contains" && node.Arguments.Count == 1)
         {
             _builder.Append('(');
 
@@ -111,6 +110,52 @@ internal class MethodParamVisitor
             _builder.Append("CONCAT('%',");
             base.Visit(node.Arguments[0]);
             _builder.Append(",'%')");
+
+            _builder.Append(')');
+
+            return node;
+        }
+
+        if (node.Method.Name == "Contains" && node.Arguments.Count == 2)
+        {
+            if (node.Arguments[1] is not MemberExpression columnNameExp)
+                throw new InvalidOperationException($"Column name was not found in expression {node}.");
+
+            var arrayValuesDelegate = 
+                Expression.Lambda(node.Arguments[0]).Compile();
+
+            var arrayValues = arrayValuesDelegate.DynamicInvoke() 
+                as System.Collections.IEnumerable
+                ?? Enumerable.Empty<object>();
+
+            List<object> inArguments = new();
+            foreach (var arg in arrayValues)
+            {
+                inArguments.Add(arg);
+            }
+
+            if (!inArguments.Any())
+            {
+                //
+                // Empty array, it's not possible to use 'IN' with an empty array.
+                //
+                return node;
+            }
+
+            // column name
+            _builder.Append(
+                _columnNameProvider.GetColumnName(columnNameExp.Member.Name));
+            
+            _builder.Append(" IN (");
+
+            bool paramsStarted = false;
+            foreach (var arg in inArguments)
+            {
+                if (paramsStarted)
+                    _builder.Append(',');
+                VisitConstant(Expression.Constant(arg));
+                paramsStarted = true;
+            }
 
             _builder.Append(')');
 
@@ -180,10 +225,7 @@ internal class MethodParamVisitor
     {
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
-            var columnName = _renamedProperties
-                .TryGetValue(m.Member.Name, out var renamedValue)
-                    ? renamedValue
-                    : m.Member.Name;
+            var columnName = _columnNameProvider.GetColumnName(m.Member.Name);
 
             _builder.Append(columnName);
             return m;

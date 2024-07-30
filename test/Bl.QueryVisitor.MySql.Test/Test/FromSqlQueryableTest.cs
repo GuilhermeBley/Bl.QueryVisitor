@@ -53,7 +53,7 @@ public class FromSqlQueryableTest
 
         var queryString = queryable.ToSqlText();
 
-        Assert.Equal(2, queryString.Where(c => c == '@').Count());
+        Assert.Equal(3, queryString.Where(c => c == '@').Count());
     }
 
     [Fact]

@@ -1,5 +1,8 @@
-﻿using Bl.QueryVisitor.Visitors;
+﻿using Bl.QueryVisitor.MySql.Providers;
+using Bl.QueryVisitor.Visitors;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 
 namespace Bl.QueryVisitor.MySql.Visitors;
@@ -12,16 +15,13 @@ internal class WhereVisitor
     /// </summary>
     private readonly StringBuilder _whereBuilder = new();
     private readonly ParamDictionary _parameters;
-    /// <summary>
-    /// These items are used to replace the 'Property.Name', because it can improve by using index 
-    /// </summary>
-    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
     public WhereVisitor(
         ParamDictionary parameters,
-        IReadOnlyDictionary<string, string> renamedProperties)
+        ColumnNameProvider columnNameProvider)
     {
         _parameters = parameters;
-        _renamedProperties = renamedProperties;
+        _columnNameProvider = columnNameProvider;
     }
 
     public string TranslateWhere(Expression expression)
@@ -32,7 +32,7 @@ internal class WhereVisitor
     }
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        var methodVisitor = new MethodParamVisitor(_parameters, _renamedProperties);
+        var methodVisitor = new MethodParamVisitor(_parameters, _columnNameProvider);
 
         var sql = methodVisitor.TranslateMethod(node);
 
@@ -63,33 +63,35 @@ internal class WhereVisitor
 
     protected override Expression VisitConditional(ConditionalExpression node)
     {
+        var condition = IfConstVisitor.EvaluateIfExpression(node.Test);
+
+        if (condition == true)
+        {
+            Visit(StripQuotes(node.IfTrue));
+            return node;
+        }
+        else if (condition == false)
+        {
+            Visit(StripQuotes(node.IfFalse));
+            return node;
+        }
+
+        // MYSQL FUNCTION: IF(Test, True, False)
         _whereBuilder.Append("IF(");
         Visit(StripQuotes(node.Test));
         _whereBuilder.Append(',');
-        Visit(StripQuotes(node.IfFalse));
-        _whereBuilder.Append(',');
         Visit(StripQuotes(node.IfTrue));
+        _whereBuilder.Append(',');
+        Visit(StripQuotes(node.IfFalse));
         _whereBuilder.Append(")");
 
         return node;
     }
 
-    private static Expression StripQuotes(Expression e)
-    {
-        while (e.NodeType == ExpressionType.Quote)
-        {
-            e = ((UnaryExpression)e).Operand;
-        }
-        return e;
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="b"></param>
-    /// <returns></returns>
     protected override Expression VisitBinary(BinaryExpression b)
     {
+        b = new BinarySimplificatorVisitor().ParseBinary(b);
+
         _whereBuilder.Append("(");
         this.Visit(b.Left);
 
@@ -149,6 +151,22 @@ internal class WhereVisitor
                 _whereBuilder.Append(" >= ");
                 break;
 
+            case ExpressionType.Multiply:
+                _whereBuilder.Append(" * ");
+                break;
+
+            case ExpressionType.Subtract:
+                _whereBuilder.Append(" - ");
+                break;
+
+            case ExpressionType.Add:
+                _whereBuilder.Append(" + ");
+                break;
+
+            case ExpressionType.Divide:
+                _whereBuilder.Append(" / ");
+                break;
+
             default:
                 throw new NotSupportedException(string.Format("The binary operator '{0}' is not supported", b.NodeType));
 
@@ -173,35 +191,29 @@ internal class WhereVisitor
 
     protected override Expression VisitConstant(ConstantExpression c)
     {
-        IQueryable? q = c.Value as IQueryable;
-
-        if (q is null && c.Value is null)
+        if (c.Value is null)
         {
             //
             // Null values can't be expressed in variables
             //
             _whereBuilder.Append("NULL");
+            return c;
         }
-        else if (q is null)
-        {
-            ArgumentNullException.ThrowIfNull(c.Value);
 
-            var parameter = _parameters.AddNextParam(c.Value);
+        var parameter = _parameters.AddNextParam(c.Value);
 
-            _whereBuilder.Append(parameter);
-        }
+        _whereBuilder.Append(parameter);
 
         return c;
     }
 
     protected override Expression VisitMember(MemberExpression m)
     {
+        m = StripNullableValue(m);
+
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
-            var columnName = _renamedProperties
-                .TryGetValue(m.Member.Name, out var renamedValue)
-                    ? renamedValue
-                    : m.Member.Name;
+            var columnName = _columnNameProvider.GetColumnName(m.Member.Name);
 
             _whereBuilder.Append(columnName);
             return m;
@@ -228,18 +240,50 @@ internal class WhereVisitor
         }
 
         if (m.NodeType == ExpressionType.MemberAccess &&
-            SqlMethodParameterTranslator.TryTranslate(m, _renamedProperties, out var sqlFunctionFound))
+            SqlMethodParameterTranslator.TryTranslate(m, _columnNameProvider, out var sqlFunctionFound))
         {
             _whereBuilder.Append(sqlFunctionFound);
 
             return m;
         }
 
-        throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
+        if (m.Expression is not null)
+        {
+            var delegateLamb =Expression.Lambda(m).Compile();
+
+            var result = delegateLamb.DynamicInvoke();
+
+            return VisitConstant(Expression.Constant(result));
+        }
+
+        throw new InvalidOperationException($"Member {m} can't be parsed.");
     }
 
-    protected bool IsNullConstant(Expression exp)
+    private static bool IsNullConstant(Expression exp)
     {
         return (exp.NodeType == ExpressionType.Constant && ((ConstantExpression)exp).Value == null);
+    }
+
+    /// <summary>
+    /// Strip member value from a member expression
+    /// </summary>
+    private static MemberExpression StripNullableValue(MemberExpression e)
+    {
+        if (e.Member.Name.Equals("Value", StringComparison.OrdinalIgnoreCase) &&
+            e.Expression is MemberExpression member)
+        {
+            return member;
+        }
+
+        return e;
+    }
+
+    private static Expression StripQuotes(Expression e)
+    {
+        while (e.NodeType == ExpressionType.Quote)
+        {
+            e = ((UnaryExpression)e).Operand;
+        }
+        return e;
     }
 }

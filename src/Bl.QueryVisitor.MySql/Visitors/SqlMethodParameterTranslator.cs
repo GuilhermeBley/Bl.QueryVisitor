@@ -1,4 +1,6 @@
-﻿using System.Linq.Expressions;
+﻿using Bl.QueryVisitor.MySql.Providers;
+using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 
 namespace Bl.QueryVisitor.MySql.Visitors;
 
@@ -18,12 +20,17 @@ internal class SqlMethodParameterTranslator
             {nameof(DateTime.Second), "Second"},
         };
 
-    private IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
     private string? _functionName;
 
-    public SqlMethodParameterTranslator(IReadOnlyDictionary<string, string> renamedProperties)
+    public SqlMethodParameterTranslator(ColumnNameProvider columnNameProvider)
     {
-        _renamedProperties = renamedProperties;
+        _columnNameProvider = columnNameProvider;
+    }
+
+    protected override Expression VisitParameter(ParameterExpression node)
+    {
+        return base.VisitParameter(node);
     }
 
     protected override Expression VisitMember(MemberExpression node)
@@ -33,12 +40,15 @@ internal class SqlMethodParameterTranslator
         if (node.Expression is MemberExpression funcMember &&
             _sqlFunctions.TryGetValue(functionName, out var sqlFunction))
         {
-            var fieldName = funcMember.Member.Name;
+            var columnName = FirstParameterVisitor.GetParameterName(funcMember, _columnNameProvider);
 
-            var columnName = _renamedProperties
-                .TryGetValue(fieldName, out var renamedValue)
-                    ? renamedValue
-                    : fieldName;
+            if (columnName is null)
+            {
+                //
+                // Can't get the property name
+                //
+                return node;
+            }
 
             _functionName = string.Concat(
                 sqlFunction,
@@ -50,15 +60,15 @@ internal class SqlMethodParameterTranslator
             return node;
         }
 
-        return Visit(node);
+        return node;
     }
 
     public static bool TryTranslate(
         Expression node,
-        IReadOnlyDictionary<string, string> renamedProperties,
+        ColumnNameProvider columnNameProvider,
         out string? translatedFunctionName)
     {
-        var visitor = new SqlMethodParameterTranslator(renamedProperties);
+        var visitor = new SqlMethodParameterTranslator(columnNameProvider);
 
         visitor.Visit(node);
 

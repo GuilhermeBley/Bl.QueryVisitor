@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Providers;
 using Bl.QueryVisitor.MySql.Visitors;
 using System.Collections.Immutable;
 using System.Linq.Expressions;
@@ -29,8 +30,10 @@ public class SimpleQueryTranslator
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly ColumnNameProvider _columnNameProvider;
 
     public IItemTranslator ItemTranslator => _selectVisitor;
+    public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
     public SimpleQueryTranslator()
         : this(Enumerable.Empty<KeyValuePair<string, string>>())
@@ -45,6 +48,7 @@ public class SimpleQueryTranslator
     public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary)
     {
         _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
+        _columnNameProvider = new QuotesColumnNameProvider(_renamedProperties);
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -55,9 +59,7 @@ public class SimpleQueryTranslator
         _skip = null;
         _take = null;
 
-        var orderResult = new OrderByExpressionVisitor(
-            _renamedProperties)
-            .Translate(expression);
+        var orderResult = new OrderByExpressionVisitor(_columnNameProvider).Translate(expression);
 
         this.Visit(orderResult.Others);
 
@@ -67,15 +69,6 @@ public class SimpleQueryTranslator
             HavingSql: NormalizeHaving(),
             OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
             LimitSql: NormalizeLimit());
-    }
-
-    private static Expression StripQuotes(Expression e)
-    {
-        while (e.NodeType == ExpressionType.Quote)
-        {
-            e = ((UnaryExpression)e).Operand;
-        }
-        return e;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -91,7 +84,7 @@ public class SimpleQueryTranslator
                 _whereBuilder.Append(" AND ");
             }
 
-            var whereTranslator = new WhereVisitor(parameters: _parameters, renamedProperties: _renamedProperties);
+            var whereTranslator = new WhereVisitor(parameters: _parameters, columnNameProvider: _columnNameProvider);
 
             _whereBuilder.Append(whereTranslator.TranslateWhere(lambda.Body));
 
@@ -235,5 +228,43 @@ public class SimpleQueryTranslator
         var res = instantiator();
 
         return Expression.Constant(res);
+    }
+
+    private static Expression StripQuotes(Expression e)
+    {
+        while (e.NodeType == ExpressionType.Quote)
+        {
+            e = ((UnaryExpression)e).Operand;
+        }
+        return e;
+    }
+
+    private class QuotesColumnNameProvider : ColumnNameProvider
+    {
+        public QuotesColumnNameProvider(IReadOnlyDictionary<string, string> directColumns) : base(directColumns)
+        {
+        }
+
+        /// <summary>
+        /// This column transformation basically transforms the column "ID" to "`ID`".
+        /// If the column is direct, the value will not be changed because values that contain a schema separator won't be mapped.
+        /// </summary>
+        protected override string TransformColumn(string column)
+        {
+            const char MYSQL_COLUMN_NAME_SEPARATOR = '`';
+            const char MYSQL_SCHEMA_SEPARATOR = '.';
+
+            if (column.Contains(MYSQL_COLUMN_NAME_SEPARATOR, StringComparison.OrdinalIgnoreCase))
+            {
+                return column;
+            }
+
+            if (column.Contains(MYSQL_SCHEMA_SEPARATOR, StringComparison.OrdinalIgnoreCase))
+            {
+                return column;
+            }
+
+            return string.Concat(MYSQL_COLUMN_NAME_SEPARATOR, column, MYSQL_COLUMN_NAME_SEPARATOR);
+        }
     }
 }
