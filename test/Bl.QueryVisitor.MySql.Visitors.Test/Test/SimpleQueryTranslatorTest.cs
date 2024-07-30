@@ -298,7 +298,20 @@ public class SimpleQueryTranslatorTest
 
         var result = query.ToSqlText();
 
-        Assert.Contains("\nORDER BY Name ASC", result);
+        Assert.Contains("\nORDER BY `Name` ASC", result);
+    }
+    
+
+    [Fact]
+    public void Translate_CheckOrderByWithFalseTest_TestTranslatedToIf()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .OrderBy(model => model.Name != null ? model.Name : null);
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("\nORDER BY `Name` ASC", result);
     }
 
     [Fact]
