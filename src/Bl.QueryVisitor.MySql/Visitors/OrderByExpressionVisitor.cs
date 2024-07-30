@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using Bl.QueryVisitor.MySql.Visitors;
+using System.Linq.Expressions;
 using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
@@ -14,7 +15,8 @@ internal class OrderByExpressionVisitor
     /// </summary>
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
 
-    public OrderByExpressionVisitor(IReadOnlyDictionary<string, string> renamedProperties)
+    public OrderByExpressionVisitor(
+        IReadOnlyDictionary<string, string> renamedProperties)
     {
         _renamedProperties = renamedProperties;
     }
@@ -24,6 +26,8 @@ internal class OrderByExpressionVisitor
     public Result Translate(Expression? node)
     {
         _orderCalls.Clear();
+
+        node = new MySqlNullSimplifier().Visit(node);
 
         var editedExpression = this.Visit(node) ?? throw new InvalidOperationException();
 
@@ -124,7 +128,7 @@ internal class OrderByExpressionVisitor
                     ParseOrderByExpressionToBuilder(m, isAsc: false, reorder: false, currentOrder);
                     break;
                 default:
-                    throw new NotImplementedException("Method '' not mapped.");
+                    throw new NotImplementedException($"Method '{m.Method.Name}' not mapped.");
             }
 
         return string.Join(", ", orders);

@@ -52,6 +52,9 @@ internal class WhereVisitor
             case ExpressionType.Convert:
                 this.Visit(u.Operand);
                 break;
+            case ExpressionType.Quote:
+                this.Visit(u.Operand);
+                break;
             default:
                 throw new NotSupportedException(string.Format("The unary operator '{0}' is not supported", u.NodeType));
         }

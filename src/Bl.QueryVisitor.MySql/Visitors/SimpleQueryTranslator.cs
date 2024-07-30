@@ -55,7 +55,9 @@ public class SimpleQueryTranslator
         _skip = null;
         _take = null;
 
-        var orderResult = new OrderByExpressionVisitor(_renamedProperties).Translate(expression);
+        var orderResult = new OrderByExpressionVisitor(
+            _renamedProperties)
+            .Translate(expression);
 
         this.Visit(orderResult.Others);
 

@@ -6,7 +6,7 @@ internal class FakeConnection
     : IDbConnection
 {
     private static NotImplementedException DefaultError
-        = new NotImplementedException("The unique purpose of this connection, is to test.");
+        = new NotImplementedException("The unique purpose of this connection is to test.");
 
     public static IDbConnection Default { get; } = new FakeConnection();
 
