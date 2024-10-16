@@ -118,6 +118,29 @@ public class FromSqlQueryableTest
         Assert.NotEmpty(results);
     }
 
+    [Fact]
+    public async void AddConversion()
+    {
+        const string TEST_NAME_CONVERSION = "MY-TESTE-NAME-12391901";
+
+        using var connection = CreateConnection();
+
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+            .Take(1)
+            .Skip(1)
+            .AddConversion(e =>
+            {
+                e.Name = TEST_NAME_CONVERSION;
+            });
+
+        var asyncProvider = (IFromSqlQueryProvider)queryable.Provider;
+
+        var results = await asyncProvider.ExecuteAsync<Task<IEnumerable<FakeModel>>>(queryable.Expression);
+
+        Assert.NotEmpty(results);
+        Assert.All(results, r => Assert.Equal(TEST_NAME_CONVERSION, r.Name));
+    }
+
     private static IDbConnection CreateConnection()
     {
         return new MySqlConnection("server=127.0.0.1;port=3310;user id=root;password=root;persistsecurityinfo=True;database=queryable-test;default command timeout=600;SslMode=None");

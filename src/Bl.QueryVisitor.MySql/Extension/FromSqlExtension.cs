@@ -7,6 +7,7 @@ using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
 using static Bl.QueryVisitor.Visitors.OrderByExpressionVisitor;
+using static Dapper.SqlMapper;
 
 namespace Bl.QueryVisitor.Extension;
 
@@ -100,8 +101,15 @@ public static partial class FromSqlExtension
 
             internalQueryable.RenamedProperties.Add(memberName, columnName);
         }
-
         return current;
+    }
+
+    // Can just add one conversion for column
+    public static IQueryable<TEntity> AddConversion<TEntity>(
+        this IQueryable<TEntity> current,
+        Action<TEntity> conversion)
+    {
+        return current.Select(e => GetValueAndConvert(e, conversion));
     }
 
     public static string ToSqlText(this IQueryable queryable)
@@ -121,5 +129,14 @@ public static partial class FromSqlExtension
         }
 
         return memberExpression.Member.Name;
+    }
+
+    private static TEntity GetValueAndConvert<TEntity>(
+            TEntity entity,
+            Action<TEntity> conversion)
+    {
+        conversion(entity);
+
+        return entity;
     }
 }
