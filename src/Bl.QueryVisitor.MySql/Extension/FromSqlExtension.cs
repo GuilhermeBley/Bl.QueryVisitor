@@ -1,13 +1,6 @@
-﻿using Bl.QueryVisitor.MySql;
-using Bl.QueryVisitor.MySql.Exceptions;
-using Bl.QueryVisitor.Visitors;
-using Dapper;
-using System.Collections;
+﻿using Dapper;
 using System.Data;
 using System.Linq.Expressions;
-using System.Reflection;
-using static Bl.QueryVisitor.Visitors.OrderByExpressionVisitor;
-using static Dapper.SqlMapper;
 
 namespace Bl.QueryVisitor.Extension;
 
@@ -104,7 +97,13 @@ public static partial class FromSqlExtension
         return current;
     }
 
-    // Can just add one conversion for column
+    /// <summary>
+    /// Add a conversion to the returned models in the queryable.
+    /// </summary>
+    /// <typeparam name="TEntity"></typeparam>
+    /// <param name="current">The current query</param>
+    /// <param name="conversion">The conversion model, where you'll change the current model.</param>
+    /// <returns>An <see cref="IQueryable"/> whose elements are the same but using the conversion./returns>
     public static IQueryable<TEntity> AddConversion<TEntity>(
         this IQueryable<TEntity> current,
         Action<TEntity> conversion)
@@ -132,11 +131,19 @@ public static partial class FromSqlExtension
     }
 
     private static TEntity GetValueAndConvert<TEntity>(
-            TEntity entity,
-            Action<TEntity> conversion)
+        TEntity entity,
+        Action<TEntity> conversion)
     {
-        conversion(entity);
+        try
+        {
+            conversion(entity);
 
-        return entity;
+            return entity;
+        }
+        catch
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to parse entity '{typeof(TEntity).FullName}'.");
+            throw;
+        }
     }
 }

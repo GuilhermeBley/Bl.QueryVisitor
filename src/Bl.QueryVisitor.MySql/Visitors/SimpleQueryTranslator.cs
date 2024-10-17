@@ -94,9 +94,6 @@ public class SimpleQueryTranslator
         {
             var selectVisitor = _selectVisitor;
 
-            if (selectVisitor.ColumnsAlreadyTranslated)
-                throw new InvalidOperationException("You can only translate the columns once.");
-
             var stripedQuoteSelect = StripQuotes(node.Arguments[1]);
 
             var result = selectVisitor.TranslateColumns(stripedQuoteSelect);

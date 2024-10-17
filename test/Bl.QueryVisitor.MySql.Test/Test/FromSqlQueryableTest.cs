@@ -119,18 +119,64 @@ public class FromSqlQueryableTest
     }
 
     [Fact]
-    public async void AddConversion()
+    public async void AddConversion_CheckValueChangedFromAllItems()
     {
         const string TEST_NAME_CONVERSION = "MY-TESTE-NAME-12391901";
 
         using var connection = CreateConnection();
 
         var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
-            .Take(1)
-            .Skip(1)
+            .Take(10)
             .AddConversion(e =>
             {
                 e.Name = TEST_NAME_CONVERSION;
+            });
+
+        var asyncProvider = (IFromSqlQueryProvider)queryable.Provider;
+
+        var results = await asyncProvider.ExecuteAsync<Task<IEnumerable<FakeModel>>>(queryable.Expression);
+
+        Assert.NotEmpty(results);
+        Assert.All(results, r => Assert.Equal(TEST_NAME_CONVERSION, r.Name));
+    }
+
+    [Fact]
+    public async void AddConversion_CheckOthersEntityValueFromItems()
+    {
+        using var connection = CreateConnection();
+
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+            .Take(10)
+            .AddConversion(e =>
+            {
+                e.InsertedAt = DateTime.SpecifyKind(e.InsertedAt, DateTimeKind.Utc);
+            });
+
+        var asyncProvider = (IFromSqlQueryProvider)queryable.Provider;
+
+        var results = await asyncProvider.ExecuteAsync<Task<IEnumerable<FakeModel>>>(queryable.Expression);
+
+        Assert.NotEmpty(results);
+        Assert.All(results, r => Assert.NotEmpty(r.Name));
+    }
+
+    [Fact]
+    public async void AddConversion_CheckConvertedValuesAfterSelection_ConversionValueShouldBePriority()
+    {
+        const string TEST_NAME_CONVERSION = "MY-TESTE-NAME-12391571";
+        
+        using var connection = CreateConnection();
+
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+            .Take(10)
+            .AddConversion(e =>
+            {
+                e.Name = TEST_NAME_CONVERSION;
+            })
+            .Select(e => new
+            {
+                e.InsertedAt,
+                e.Id
             });
 
         var asyncProvider = (IFromSqlQueryProvider)queryable.Provider;

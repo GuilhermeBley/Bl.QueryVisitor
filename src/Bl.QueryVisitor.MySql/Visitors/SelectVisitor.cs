@@ -17,7 +17,8 @@ internal class SelectVisitor
         };
 
     private bool _columnsAlreadyTranslated = false;
-    private readonly List<string> _columns = new List<string>();
+    private bool _anyColumnAlreadyTranslated = false;
+    private readonly HashSet<string> _columns = new();
     private readonly List<Func<object?, object?>> _transformations = new();
 
     public bool ColumnsAlreadyTranslated => _columnsAlreadyTranslated;
@@ -28,8 +29,14 @@ internal class SelectVisitor
 
     public IEnumerable<string> TranslateColumns(Expression expression)
     {
+        _anyColumnAlreadyTranslated = false;
+
         Visit(expression);
-        _columnsAlreadyTranslated = true;
+
+        if (_anyColumnAlreadyTranslated && _columnsAlreadyTranslated)
+            throw new InvalidOperationException("You can only translate the columns once.");
+
+        _columnsAlreadyTranslated = _anyColumnAlreadyTranslated;
         return _columns.ToArray();
     }
 
@@ -81,6 +88,7 @@ internal class SelectVisitor
             return base.VisitMember(node);
 
         _columns.Add(node.Member.Name);
+        _anyColumnAlreadyTranslated = true;
         return base.VisitMember(node);
     }
 
