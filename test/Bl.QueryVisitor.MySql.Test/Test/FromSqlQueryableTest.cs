@@ -83,7 +83,7 @@ public class FromSqlQueryableTest
     }
 
     [Fact]
-    public async void ExecuteAsync_TryExecuteLimitWithProvider_Success()
+    public async Task ExecuteAsync_TryExecuteLimitWithProvider_Success()
     {
         using var connection = CreateConnection();
 
@@ -99,7 +99,7 @@ public class FromSqlQueryableTest
     }
 
     [Fact]
-    public async void ExecuteAsync_ExecuteWithNewObjectSelection()
+    public async Task ExecuteAsync_ExecuteWithNewObjectSelection()
     {
         using var connection = CreateConnection();
 
@@ -119,7 +119,7 @@ public class FromSqlQueryableTest
     }
 
     [Fact]
-    public async void AddConversion_CheckValueChangedFromAllItems()
+    public async Task AddConversion_CheckValueChangedFromAllItems()
     {
         const string TEST_NAME_CONVERSION = "MY-TESTE-NAME-12391901";
 
@@ -141,7 +141,7 @@ public class FromSqlQueryableTest
     }
 
     [Fact]
-    public async void AddConversion_CheckOthersEntityValueFromItems()
+    public async Task AddConversion_CheckOthersEntityValueFromItems()
     {
         using var connection = CreateConnection();
 
@@ -161,7 +161,7 @@ public class FromSqlQueryableTest
     }
 
     [Fact]
-    public async void AddConversion_CheckConvertedValuesAfterSelection_ConversionValueShouldBePriority()
+    public async Task AddConversion_CheckConvertedValuesAfterSelection_ConversionValueShouldBePriority()
     {
         const string TEST_NAME_CONVERSION = "MY-TESTE-NAME-12391571";
         
@@ -185,6 +185,30 @@ public class FromSqlQueryableTest
 
         Assert.NotEmpty(results);
         Assert.All(results, r => Assert.Equal(TEST_NAME_CONVERSION, r.Name));
+    }
+
+    [Fact]
+    public void AddConversion_CheckIfTheFieldAffectsTheResultingSql_ShouldNotHaveTheColumnNameInTheSql()
+    {
+        const string NAME_COLUMN = nameof(FakeModel.Name);
+        
+        using var connection = CreateConnection();
+
+        var queryable = connection.SqlAsQueryable<FakeModel>("SELECT * FROM `queryable-test`.FakeModel")
+            .Take(10)
+            .AddConversion(e =>
+            {
+                e.Name = "";
+            })
+            .Select(e => new
+            {
+                e.InsertedAt,
+                e.Id
+            });
+
+        var sqlText = queryable.ToSqlText();
+
+        Assert.DoesNotContain(NAME_COLUMN, sqlText);
     }
 
     private static IDbConnection CreateConnection()

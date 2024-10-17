@@ -21,6 +21,7 @@ internal class SelectVisitor
     private readonly HashSet<string> _columns = new();
     private readonly List<Func<object?, object?>> _transformations = new();
 
+    public IReadOnlyCollection<string> Columns => _columns;
     public bool ColumnsAlreadyTranslated => _columnsAlreadyTranslated;
 
     public SelectVisitor()
