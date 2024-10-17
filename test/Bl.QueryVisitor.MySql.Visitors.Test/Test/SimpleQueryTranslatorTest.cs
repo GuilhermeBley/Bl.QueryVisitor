@@ -300,7 +300,42 @@ public class SimpleQueryTranslatorTest
 
         Assert.Contains("\nORDER BY `Name` ASC", result);
     }
-    
+
+    [Fact]
+    public void Translate_CheckSelectedColumns()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .Select(model =>
+                new
+                {
+                    model.Name
+                });
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT `t0`.`Name` FROM", result);
+    }
+
+    [Fact]
+    public void Translate_CheckSelectedColumnsWithConversion()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .AddConversion(e =>
+            {
+                // fake conversion
+            })
+            .Select(model =>
+            new
+            {
+                model.Name
+            });
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT `t0`.`Name` FROM", result);
+    }
 
     [Fact]
     public void Translate_CheckOrderByWithFalseTest_TestTranslatedToIf()

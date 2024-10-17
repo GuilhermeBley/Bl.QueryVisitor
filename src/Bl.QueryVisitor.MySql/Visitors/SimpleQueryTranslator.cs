@@ -23,8 +23,8 @@ public class SimpleQueryTranslator
     private uint? _skip = null;
     private uint? _take = null;
     private readonly ParamDictionary _parameters = new();
-    private readonly List<string> _columns = new();
-    private readonly SelectVisitor _selectVisitor = new SelectVisitor();
+    private IEnumerable<string> _columns => _selectVisitor.Columns;
+    private SelectVisitor _selectVisitor = new SelectVisitor();
 
     /// <summary>
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
@@ -54,7 +54,7 @@ public class SimpleQueryTranslator
     public SimpleQueryTranslatorResult Translate(Expression expression)
     {
         _whereBuilder.Clear();
-        _columns.Clear();
+        _selectVisitor = new();
         _parameters.Clear();
         _skip = null;
         _take = null;
@@ -94,14 +94,9 @@ public class SimpleQueryTranslator
         {
             var selectVisitor = _selectVisitor;
 
-            if (selectVisitor.ColumnsAlreadyTranslated)
-                throw new InvalidOperationException("You can only translate the columns once.");
-
             var stripedQuoteSelect = StripQuotes(node.Arguments[1]);
 
-            var result = selectVisitor.TranslateColumns(stripedQuoteSelect);
-
-            _columns.AddRange(result);
+            selectVisitor.TranslateColumns(stripedQuoteSelect);
 
             Expression nextExpression = node.Arguments[0];
 
