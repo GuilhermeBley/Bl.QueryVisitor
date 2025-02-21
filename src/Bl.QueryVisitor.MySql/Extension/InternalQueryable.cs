@@ -2,7 +2,9 @@
 using Dapper;
 using System.Collections;
 using System.Data;
+using System.Data.Common;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Bl.QueryVisitor.Extension;
 
@@ -12,8 +14,9 @@ internal class InternalQueryable<TEntity>
     /// <summary>
     /// Provider that improves the expressions changes after execution.
     /// </summary>
-    private readonly InternalQueryProvider _provider;
+    private InternalQueryProvider _provider => new(_dbConnection, _commandDefinition, RenamedProperties, EnsureAllColumnsMapped, _model);
     private readonly Expression _expression;
+    private readonly IDbConnection _dbConnection;
     private readonly CommandDefinition _commandDefinition;
     private readonly Type _model;
     public Type ModelType => _model;
@@ -23,16 +26,21 @@ internal class InternalQueryable<TEntity>
     /// </summary>
     public readonly Dictionary<string, string> RenamedProperties;
 
+    /// <summary>
+    /// This flag marks that the <see cref="RenamedProperties"/> should have all the class properties to the query.
+    /// </summary>
+    public bool EnsureAllColumnsMapped = false;
+
     public InternalQueryable(
         IDbConnection dbConnection,
         CommandDefinition commandDefinition,
         Type model,
         Expression? expression = null,
-        Dictionary<string, string>? renamedProperties = null)
+        Dictionary<string, string>? renamedProperties = null
     {
+        _dbConnection = dbConnection;
         _commandDefinition = commandDefinition;
         RenamedProperties = renamedProperties ?? new();
-        _provider = new(dbConnection, commandDefinition, RenamedProperties, model);
         _expression = expression ?? Expression.Constant(this);
         _model = model;
     }

@@ -30,6 +30,7 @@ public class SimpleQueryTranslator
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly bool _ensureAllColumnsMapped;
     private readonly ColumnNameProvider _columnNameProvider;
 
     public IItemTranslator ItemTranslator => _selectVisitor;
@@ -46,9 +47,16 @@ public class SimpleQueryTranslator
     }
 
     public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary)
+        : this(renamedPropertiesDictionary, false)
+    {
+
+    }
+
+    public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary, bool ensureAllColumnsMapped)
     {
         _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
         _columnNameProvider = new QuotesColumnNameProvider(_renamedProperties);
+        _ensureAllColumnsMapped = ensureAllColumnsMapped;
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -63,9 +71,19 @@ public class SimpleQueryTranslator
 
         this.Visit(orderResult.Others);
 
+        if (_ensureAllColumnsMapped)
+            return new SimpleQueryTranslatorResult(
+                Parameters: _parameters,
+                Columns:[],
+                SelectSql: NormalizeSelect(),
+                HavingSql: NormalizeHaving(),
+                OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
+                LimitSql: NormalizeLimit());
+
         return new SimpleQueryTranslatorResult(
             Parameters: _parameters,
             Columns: _columns,
+            SelectSql: string.Empty,
             HavingSql: NormalizeHaving(),
             OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
             LimitSql: NormalizeLimit());

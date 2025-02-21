@@ -74,6 +74,25 @@ public static partial class FromSqlExtension
             columnName: columnName);
 
     /// <summary>
+    /// Add direct SQL commands to relate with the object properties.
+    /// </summary>
+    /// <remarks>
+    ///     <para>Useful in performance scenarios, as long as the <paramref name="sqlCommand"/> could be related with the direct table column.</para>
+    ///     <para>The property name will be changed to the sql command in the MYSQL query.</para>
+    /// </remarks>
+    public static IQueryable<TEntity> SetColumnAsSql<TEntity, TIn>(
+        this IQueryable<TEntity> current,
+        Expression<Func<TEntity, TIn>> property,
+        string sqlCommand)
+    {
+        if (current.Provider is not InternalQueryable<TEntity> internalQuery) return current;
+
+        internalQuery.EnsureAllColumnsMapped = true;
+
+        return SetColumnName(current, property, sqlCommand);
+    }
+
+    /// <summary>
     /// Add direct columns related to object properties or fields.
     /// </summary>
     /// <remarks>
