@@ -11,8 +11,10 @@ internal static class ResultWriter
 
         sql = sql?.Trim(' ', '\n', ';') ?? string.Empty;
 
+        builder.Append(result.SelectSql);
+
         builder.Append(sql);
-        
+
         builder.Append(result.HavingSql);
         
         builder.Append(result.OrderBySql);

@@ -36,7 +36,7 @@ internal class InternalQueryable<TEntity>
         CommandDefinition commandDefinition,
         Type model,
         Expression? expression = null,
-        Dictionary<string, string>? renamedProperties = null
+        Dictionary<string, string>? renamedProperties = null)
     {
         _dbConnection = dbConnection;
         _commandDefinition = commandDefinition;
@@ -80,7 +80,7 @@ internal class InternalQueryable<TEntity>
 
     public string ToSqlText()
     {
-        var translator = new SimpleQueryTranslator(RenamedProperties);
+        var translator = Provider.GenerateTranslator();
 
         var result = translator.Translate(Expression);
 

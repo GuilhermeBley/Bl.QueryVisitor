@@ -69,7 +69,7 @@ internal class InternalQueryProvider
 
         var resultType = this._model;
 
-        var translator = new SimpleQueryTranslator(_renamedProperties);
+        var translator = ((IFromSqlQueryProvider)this).GenerateTranslator();
 
         var result = translator.Translate(expression);
 
@@ -104,7 +104,7 @@ internal class InternalQueryProvider
 
         var resultType = this._model;
 
-        var translator = new SimpleQueryTranslator(_renamedProperties);
+        var translator = ((IFromSqlQueryProvider)this).GenerateTranslator();
 
         var result = translator.Translate(expression);
 
@@ -136,6 +136,11 @@ internal class InternalQueryProvider
             newCommand,
             resultType,
             translator.ItemTranslator);
+    }
+
+    SimpleQueryTranslator IFromSqlQueryProvider.GenerateTranslator()
+    {
+        return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped);
     }
 
     /// <summary>

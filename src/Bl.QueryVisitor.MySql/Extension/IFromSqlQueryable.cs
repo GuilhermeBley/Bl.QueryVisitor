@@ -16,6 +16,7 @@ public interface IFromSqlQueryProvider
     : IQueryProvider
 {
     TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken = default);
+    Bl.QueryVisitor.Visitors.SimpleQueryTranslator GenerateTranslator();
 }
 
 public interface IFromSqlTextQuery

@@ -74,7 +74,7 @@ public class SimpleQueryTranslator
         if (_ensureAllColumnsMapped)
             return new SimpleQueryTranslatorResult(
                 Parameters: _parameters,
-                Columns:[],
+                Columns: Array.Empty<string>(),
                 SelectSql: NormalizeSelect(),
                 HavingSql: NormalizeHaving(),
                 OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
@@ -203,6 +203,14 @@ public class SimpleQueryTranslator
         return string.Concat('\n', "HAVING ", whereClauses);
     }
 
+    private string NormalizeSelect()
+    {
+        var selectSql =
+            string.Join(",\n", _renamedProperties.Keys.Select(_columnNameProvider.GetColumnName));
+
+        return string.Concat('\n', "SELECT\n", selectSql);
+    }
+
     private string NormalizeLimit()
     {
         if (_skip is null && _take is null)
@@ -262,10 +270,13 @@ public class SimpleQueryTranslator
         /// This column transformation basically transforms the column "ID" to "`ID`".
         /// If the column is direct, the value will not be changed because values that contain a schema separator won't be mapped.
         /// </summary>
-        protected override string TransformColumn(string column)
+        protected override string TransformColumn(string column, bool columnMapped)
         {
             const char MYSQL_COLUMN_NAME_SEPARATOR = '`';
             const char MYSQL_SCHEMA_SEPARATOR = '.';
+
+            if (columnMapped)
+                return column;
 
             if (column.Contains(MYSQL_COLUMN_NAME_SEPARATOR, StringComparison.OrdinalIgnoreCase))
             {

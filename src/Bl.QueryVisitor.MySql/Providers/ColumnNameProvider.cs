@@ -15,14 +15,14 @@ public class ColumnNameProvider
     public string GetColumnName(string column)
     {
         if (_renamedProperties.Count == 0)
-            return TransformColumn(column);
+            return TransformColumn(column, false);
 
         _renamedProperties.TryGetValue(column, out var parsedColumnName);
 
-        return TransformColumn(parsedColumnName ?? column);
+        return TransformColumn(parsedColumnName ?? column, parsedColumnName is not null);
     }
 
-    protected virtual string TransformColumn(string column)
+    protected virtual string TransformColumn(string column, bool columnMapped)
     {
         return column;
     }
