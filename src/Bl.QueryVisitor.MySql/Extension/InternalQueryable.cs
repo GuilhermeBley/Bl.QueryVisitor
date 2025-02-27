@@ -1,4 +1,5 @@
-﻿using Bl.QueryVisitor.Visitors;
+﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.Visitors;
 using Dapper;
 using System.Collections;
 using System.Data;
@@ -14,11 +15,13 @@ internal class InternalQueryable<TEntity>
     /// <summary>
     /// Provider that improves the expressions changes after execution.
     /// </summary>
-    private InternalQueryProvider _provider => new(_dbConnection, _commandDefinition, RenamedProperties, EnsureAllColumnsMapped, _model);
+    private InternalQueryProvider _provider => new(_dbConnection, _commandDefinition, RenamedProperties, EnsureAllColumnsMapped, _model, AdditionalCommands);
     private readonly Expression _expression;
     private readonly IDbConnection _dbConnection;
     private readonly CommandDefinition _commandDefinition;
     private readonly Type _model;
+
+    public readonly List<CommandLocale> AdditionalCommands = new List<CommandLocale>();
     public Type ModelType => _model;
 
     /// <summary>

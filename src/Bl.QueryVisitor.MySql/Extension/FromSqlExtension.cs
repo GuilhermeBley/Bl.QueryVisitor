@@ -1,6 +1,8 @@
-﻿using Dapper;
+﻿using Bl.QueryVisitor.MySql;
+using Dapper;
 using System.Data;
 using System.Linq.Expressions;
+using static Dapper.SqlMapper;
 
 namespace Bl.QueryVisitor.Extension;
 
@@ -127,6 +129,22 @@ public static partial class FromSqlExtension
         Action<TEntity> conversion)
     {
         return current.Select(e => GetValueAndConvert(e, conversion));
+    }
+
+    /// <summary>
+    /// Add a SQL command in a specific area of the entire SQL.
+    /// It will just add the command to the query, you'll be responsible for manage all the query syntax, like ';', variables, ...
+    /// </summary>
+    public static IQueryable<TEntity> AddSql<TEntity>(
+        this IQueryable<TEntity> current, 
+        CommandLocaleRegion region, 
+        string sql)
+    {
+        if (current is InternalQueryable<TEntity> internalQueryable)
+        {
+            internalQueryable.AdditionalCommands.Add(new(region, sql));
+        }
+        return current;
     }
 
     public static string ToSqlText(this IQueryable queryable)

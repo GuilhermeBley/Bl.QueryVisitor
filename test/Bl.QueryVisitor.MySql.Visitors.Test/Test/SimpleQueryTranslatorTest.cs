@@ -425,6 +425,19 @@ public class SimpleQueryTranslatorTest
 
         var result = query.ToSqlText();
 
-        Assert.Contains("SELECT\nf.Id,\nNULL,\nIF(InsertedAt > 0, InsertedAt, NULL) Date;", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SELECT\nf.Id,\nIF(InsertedAt > 0, InsertedAt, NULL) Date,\nNULL;", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AddSql_CheckIfSqlWasAddded()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .AsQueryable()
+            .AddSql(MySql.CommandLocaleRegion.Header, "SET NAMES = 'latin';");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SET NAMES = 'latin';", result, StringComparison.OrdinalIgnoreCase);
     }
 }

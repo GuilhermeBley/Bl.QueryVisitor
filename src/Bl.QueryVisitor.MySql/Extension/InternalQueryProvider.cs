@@ -20,19 +20,22 @@ internal class InternalQueryProvider
     /// </summary>
     private readonly Dictionary<string, string> _renamedProperties;
     private readonly bool _ensureAllColumnsMapped;
+    private readonly IEnumerable<CommandLocale> _additionalCommands;
 
     public InternalQueryProvider(
         IDbConnection dbConnection,
         CommandDefinition commandDefinition,
         Dictionary<string, string> renamedProperties,
         bool ensureAllColumnsMapped,
-        Type model)
+        Type model,
+        IEnumerable<CommandLocale> additionalCommands)
     {
         _commandDefinition = commandDefinition;
         _dbConnection = dbConnection;
         _renamedProperties = renamedProperties;
         _ensureAllColumnsMapped = ensureAllColumnsMapped;
         _model = model;
+        _additionalCommands = additionalCommands;
     }
 
     public IQueryable CreateQuery(Expression expression)
@@ -140,7 +143,7 @@ internal class InternalQueryProvider
 
     SimpleQueryTranslator IFromSqlQueryProvider.GenerateTranslator()
     {
-        return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped);
+        return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped, _additionalCommands);
     }
 
     /// <summary>

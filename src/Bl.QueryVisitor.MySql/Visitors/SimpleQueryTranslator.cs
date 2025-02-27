@@ -32,6 +32,7 @@ public class SimpleQueryTranslator
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
     private readonly bool _ensureAllColumnsMapped;
     private readonly ColumnNameProvider _columnNameProvider;
+    private readonly IEnumerable<CommandLocale> _addionalCommands;
 
     public IItemTranslator ItemTranslator => _selectVisitor;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
@@ -53,10 +54,17 @@ public class SimpleQueryTranslator
     }
 
     public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary, bool ensureAllColumnsMapped)
+        : this(renamedPropertiesDictionary,  ensureAllColumnsMapped, Enumerable.Empty<CommandLocale>()) { }
+
+    public SimpleQueryTranslator(
+        IReadOnlyDictionary<string, string> renamedPropertiesDictionary, 
+        bool ensureAllColumnsMapped,
+        IEnumerable<CommandLocale> AddionalCommands)
     {
         _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
         _columnNameProvider = new QuotesColumnNameProvider(_renamedProperties);
         _ensureAllColumnsMapped = ensureAllColumnsMapped;
+        _addionalCommands = AddionalCommands;
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -75,6 +83,7 @@ public class SimpleQueryTranslator
             return new SimpleQueryTranslatorResult(
                 Parameters: _parameters,
                 Columns: Array.Empty<string>(),
+                AdditionalCommands: new(_addionalCommands),
                 SelectSql: NormalizeSelect(),
                 HavingSql: NormalizeHaving(),
                 OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
@@ -84,6 +93,7 @@ public class SimpleQueryTranslator
             Parameters: _parameters,
             Columns: _columns,
             SelectSql: string.Empty,
+            AdditionalCommands: new(_addionalCommands),
             HavingSql: NormalizeHaving(),
             OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
             LimitSql: NormalizeLimit());
@@ -206,7 +216,7 @@ public class SimpleQueryTranslator
     private string NormalizeSelect()
     {
         var selectSql =
-            string.Join(",\n", _renamedProperties.Keys.Select(_columnNameProvider.GetColumnName));
+            string.Join(",\n", _renamedProperties.Keys.OrderBy(e => e).Select(_columnNameProvider.GetColumnName));
 
         return string.Concat('\n', "SELECT\n", selectSql);
     }

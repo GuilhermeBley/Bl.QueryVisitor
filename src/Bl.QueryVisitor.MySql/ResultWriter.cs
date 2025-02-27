@@ -1,4 +1,5 @@
-﻿using Bl.QueryVisitor.Visitors;
+﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.Visitors;
 using System.Text;
 
 namespace Bl.QueryVisitor;
@@ -10,6 +11,8 @@ internal static class ResultWriter
         var builder = new StringBuilder();
 
         sql = sql?.Trim(' ', '\n', ';') ?? string.Empty;
+
+        WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.Header);
 
         builder.Append(result.SelectSql);
 
@@ -70,5 +73,22 @@ internal static class ResultWriter
         }
 
         throw new ArgumentException("No alises unique value were found.", nameof(aliases));
+    }
+
+    private static void WriteCommandLocale(
+        StringBuilder builder, 
+        CommandLocaleArray commandLocales, 
+        CommandLocaleRegion region)
+    {
+        var commands = commandLocales.GetByRegion(region);
+
+        if (commands.Count == 0) return;
+
+        foreach (var command in commands)
+        {
+            builder.Append(command.SqlCommand);
+            builder.Append(';');
+            builder.Append('\n');
+        }
     }
 }
