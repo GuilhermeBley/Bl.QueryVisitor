@@ -411,4 +411,33 @@ public class SimpleQueryTranslatorTest
 
         Assert.Equal("\nHAVING (`MyGuid` = @P1000) AND (`MyGuid` = @P1001) AND (`DateTimeOffset` = @P1002)", result.HavingSql);
     }
+
+    [Fact]
+    public void EnsureAllColumnSet_CheckIfSelectPropertyMatch()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .AsQueryable()
+            .EnsureAllColumnSet()
+            .SetColumnName(e => e.InsertedAt, "IF(InsertedAt > 0, InsertedAt, NULL) Date")
+            .SetColumnName(e => e.Name, "NULL")
+            .SetColumnName(e => e.Id, "f.Id");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT\nf.Id,\nIF(InsertedAt > 0, InsertedAt, NULL) Date,\nNULL;", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AddSql_CheckIfSqlWasAddded()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .AsQueryable()
+            .AddSql(MySql.CommandLocaleRegion.Header, "SET NAMES = 'latin';");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SET NAMES = 'latin';", result, StringComparison.OrdinalIgnoreCase);
+    }
 }

@@ -19,17 +19,23 @@ internal class InternalQueryProvider
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
     private readonly Dictionary<string, string> _renamedProperties;
+    private readonly bool _ensureAllColumnsMapped;
+    private readonly IEnumerable<CommandLocale> _additionalCommands;
 
     public InternalQueryProvider(
         IDbConnection dbConnection,
         CommandDefinition commandDefinition,
         Dictionary<string, string> renamedProperties,
-        Type model)
+        bool ensureAllColumnsMapped,
+        Type model,
+        IEnumerable<CommandLocale> additionalCommands)
     {
         _commandDefinition = commandDefinition;
         _dbConnection = dbConnection;
         _renamedProperties = renamedProperties;
+        _ensureAllColumnsMapped = ensureAllColumnsMapped;
         _model = model;
+        _additionalCommands = additionalCommands;
     }
 
     public IQueryable CreateQuery(Expression expression)
@@ -38,7 +44,10 @@ internal class InternalQueryProvider
             commandDefinition: _commandDefinition,
             model: this._model,
             expression: expression,
-            renamedProperties: _renamedProperties);
+            renamedProperties: _renamedProperties)
+        {
+            EnsureAllColumnsMapped = _ensureAllColumnsMapped
+        };
 
     public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
         => new InternalQueryable<TElement>(
@@ -46,7 +55,10 @@ internal class InternalQueryProvider
             commandDefinition: _commandDefinition,
             model: this._model,
             expression: expression,
-            renamedProperties: _renamedProperties);
+            renamedProperties: _renamedProperties)
+        {
+            EnsureAllColumnsMapped = _ensureAllColumnsMapped
+        };
 
     public object? Execute(Expression expression)
         => Execute<IEnumerable<object>>(expression);
@@ -60,7 +72,7 @@ internal class InternalQueryProvider
 
         var resultType = this._model;
 
-        var translator = new SimpleQueryTranslator(_renamedProperties);
+        var translator = ((IFromSqlQueryProvider)this).GenerateTranslator();
 
         var result = translator.Translate(expression);
 
@@ -95,7 +107,7 @@ internal class InternalQueryProvider
 
         var resultType = this._model;
 
-        var translator = new SimpleQueryTranslator(_renamedProperties);
+        var translator = ((IFromSqlQueryProvider)this).GenerateTranslator();
 
         var result = translator.Translate(expression);
 
@@ -127,6 +139,11 @@ internal class InternalQueryProvider
             newCommand,
             resultType,
             translator.ItemTranslator);
+    }
+
+    SimpleQueryTranslator IFromSqlQueryProvider.GenerateTranslator()
+    {
+        return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped, _additionalCommands);
     }
 
     /// <summary>

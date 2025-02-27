@@ -30,7 +30,9 @@ public class SimpleQueryTranslator
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
     private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly bool _ensureAllColumnsMapped;
     private readonly ColumnNameProvider _columnNameProvider;
+    private readonly IEnumerable<CommandLocale> _addionalCommands;
 
     public IItemTranslator ItemTranslator => _selectVisitor;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
@@ -46,9 +48,23 @@ public class SimpleQueryTranslator
     }
 
     public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary)
+        : this(renamedPropertiesDictionary, false)
+    {
+
+    }
+
+    public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary, bool ensureAllColumnsMapped)
+        : this(renamedPropertiesDictionary,  ensureAllColumnsMapped, Enumerable.Empty<CommandLocale>()) { }
+
+    public SimpleQueryTranslator(
+        IReadOnlyDictionary<string, string> renamedPropertiesDictionary, 
+        bool ensureAllColumnsMapped,
+        IEnumerable<CommandLocale> AddionalCommands)
     {
         _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
         _columnNameProvider = new QuotesColumnNameProvider(_renamedProperties);
+        _ensureAllColumnsMapped = ensureAllColumnsMapped;
+        _addionalCommands = AddionalCommands;
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -63,9 +79,21 @@ public class SimpleQueryTranslator
 
         this.Visit(orderResult.Others);
 
+        if (_ensureAllColumnsMapped)
+            return new SimpleQueryTranslatorResult(
+                Parameters: _parameters,
+                Columns: Array.Empty<string>(),
+                AdditionalCommands: new(_addionalCommands),
+                SelectSql: NormalizeSelect(),
+                HavingSql: NormalizeHaving(),
+                OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
+                LimitSql: NormalizeLimit());
+
         return new SimpleQueryTranslatorResult(
             Parameters: _parameters,
             Columns: _columns,
+            SelectSql: string.Empty,
+            AdditionalCommands: new(_addionalCommands),
             HavingSql: NormalizeHaving(),
             OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
             LimitSql: NormalizeLimit());
@@ -185,6 +213,14 @@ public class SimpleQueryTranslator
         return string.Concat('\n', "HAVING ", whereClauses);
     }
 
+    private string NormalizeSelect()
+    {
+        var selectSql =
+            string.Join(",\n", _renamedProperties.Keys.OrderBy(e => e).Select(_columnNameProvider.GetColumnName));
+
+        return string.Concat('\n', "SELECT\n", selectSql);
+    }
+
     private string NormalizeLimit()
     {
         if (_skip is null && _take is null)
@@ -244,10 +280,13 @@ public class SimpleQueryTranslator
         /// This column transformation basically transforms the column "ID" to "`ID`".
         /// If the column is direct, the value will not be changed because values that contain a schema separator won't be mapped.
         /// </summary>
-        protected override string TransformColumn(string column)
+        protected override string TransformColumn(string column, bool columnMapped)
         {
             const char MYSQL_COLUMN_NAME_SEPARATOR = '`';
             const char MYSQL_SCHEMA_SEPARATOR = '.';
+
+            if (columnMapped)
+                return column;
 
             if (column.Contains(MYSQL_COLUMN_NAME_SEPARATOR, StringComparison.OrdinalIgnoreCase))
             {

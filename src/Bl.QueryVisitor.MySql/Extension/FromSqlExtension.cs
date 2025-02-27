@@ -1,6 +1,8 @@
-﻿using Dapper;
+﻿using Bl.QueryVisitor.MySql;
+using Dapper;
 using System.Data;
 using System.Linq.Expressions;
+using static Dapper.SqlMapper;
 
 namespace Bl.QueryVisitor.Extension;
 
@@ -74,6 +76,24 @@ public static partial class FromSqlExtension
             columnName: columnName);
 
     /// <summary>
+    /// Add direct SQL commands to relate with the object properties.
+    /// </summary>
+    /// <remarks>
+    ///     <para>Useful in performance scenarios, as long as the <paramref name="sqlCommand"/> could be related with the direct table column.</para>
+    ///     <para>The property name will be changed to the sql command in the MYSQL query.</para>
+    /// </remarks>
+    public static IQueryable<TEntity> EnsureAllColumnSet<TEntity>(
+        this IQueryable<TEntity> current)
+    {
+        if (current is not InternalQueryable<TEntity> internalQuery) 
+            return current;
+
+        internalQuery.EnsureAllColumnsMapped = true;
+
+        return current;
+    }
+
+    /// <summary>
     /// Add direct columns related to object properties or fields.
     /// </summary>
     /// <remarks>
@@ -109,6 +129,22 @@ public static partial class FromSqlExtension
         Action<TEntity> conversion)
     {
         return current.Select(e => GetValueAndConvert(e, conversion));
+    }
+
+    /// <summary>
+    /// Add a SQL command in a specific area of the entire SQL.
+    /// It will just add the command to the query, you'll be responsible for manage all the query syntax, like ';', variables, ...
+    /// </summary>
+    public static IQueryable<TEntity> AddSql<TEntity>(
+        this IQueryable<TEntity> current, 
+        CommandLocaleRegion region, 
+        string sql)
+    {
+        if (current is InternalQueryable<TEntity> internalQueryable)
+        {
+            internalQueryable.AdditionalCommands.Add(new(region, sql));
+        }
+        return current;
     }
 
     public static string ToSqlText(this IQueryable queryable)
