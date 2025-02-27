@@ -227,13 +227,18 @@ public class SimpleQueryTranslator
 
     private string NormalizeSelect()
     {
+        var columnsMapped =
+            _selectVisitor.Columns.Count == 0
+            ? _renamedProperties.Keys
+            : _selectVisitor.Columns;
+
         var selectSql =
             string.Join(
-                ",\n", 
-                _renamedProperties.Keys.OrderBy(e => e).Select(col =>
+                ",\n",
+                columnsMapped.OrderBy(e => e).Select(col =>
                     string.Concat(_columnNameProvider.GetColumnName(col), " AS ", _columnNameProvider.TransformColumn(col)))
             );
-
+        
         return string.Concat('\n', "SELECT\n", selectSql, ' ');
     }
 
