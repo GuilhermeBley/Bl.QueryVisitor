@@ -18,6 +18,8 @@ internal static class ResultWriter
 
         builder.Append(sql);
 
+        builder.Append(result.WhereSql);
+
         builder.Append(result.HavingSql);
         
         builder.Append(result.OrderBySql);

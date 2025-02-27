@@ -416,7 +416,7 @@ public class SimpleQueryTranslatorTest
     public void EnsureAllColumnSet_CheckIfSelectPropertyMatch()
     {
         var query = FakeConnection.Default
-            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM Users"))
             .AsQueryable()
             .EnsureAllColumnSet()
             .SetColumnName(e => e.InsertedAt, "IF(InsertedAt > 0, InsertedAt, NULL) Date")
@@ -425,7 +425,77 @@ public class SimpleQueryTranslatorTest
 
         var result = query.ToSqlText();
 
-        Assert.Contains("SELECT\nf.Id,\nIF(InsertedAt > 0, InsertedAt, NULL) Date,\nNULL;", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SELECT\nf.Id AS `Id`,\nIF(InsertedAt > 0, InsertedAt, NULL) Date AS `InsertedAt`,\nNULL AS `Name` FROM Users;", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EnsureAllColumnSet_ShouldColumnsInsertedAtAndIdBeRemovedFromTheSql()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM Users"))
+            .AsQueryable()
+            .EnsureAllColumnSet()
+            .SetColumnName(e => e.InsertedAt, "IF(InsertedAt > 0, InsertedAt, NULL) Date")
+            .SetColumnName(e => e.Name, "NULL")
+            .SetColumnName(e => e.Id, "f.Id")
+            .Select(e => new { e.Name });
+
+        var result = query.ToSqlText();
+
+        Assert.DoesNotContain("IF(InsertedAt > 0, InsertedAt, NULL) Date", result, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("f.Id", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EnsureAllColumnSet_ShouldWriteWhereWithHiddenColumns()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM Users"))
+            .AsQueryable()
+            .EnsureAllColumnSet()
+            .SetColumnName(e => e.InsertedAt, "IF(InsertedAt > 0, InsertedAt, NULL) Date")
+            .SetColumnName(e => e.Name, "NULL")
+            .SetColumnName(e => e.Id, "f.Id")
+            .Where(e => e.InsertedAt > new DateTime(2005, 01, 01))
+            .Select(e => new { e.Name });
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("WHERE (IF(InsertedAt > 0, InsertedAt, NULL) Date > @", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EnsureAllColumnSet_CheckIfOrderByAddedSpecificColumn()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM User"))
+            .AsQueryable()
+            .EnsureAllColumnSet()
+            .SetColumnName(e => e.InsertedAt, "IF(InsertedAt > 0, InsertedAt, NULL)")
+            .SetColumnName(e => e.Name, "NULL")
+            .SetColumnName(e => e.Id, "f.Id")
+            .OrderBy(e => e.Id);
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("ORDER BY f.Id ASC", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EnsureAllColumnSet_CheckIfWhereAddedSpecificColumn()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM User"))
+            .AsQueryable()
+            .EnsureAllColumnSet()
+            .SetColumnName(e => e.InsertedAt, "IF(InsertedAt > 0, InsertedAt, NULL)")
+            .SetColumnName(e => e.Name, "NULL")
+            .SetColumnName(e => e.Id, "f.Id")
+            .Where(e => e.InsertedAt > new DateTime(2025, 1, 1));
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("WHERE (IF(InsertedAt > 0, InsertedAt, NULL) > @", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

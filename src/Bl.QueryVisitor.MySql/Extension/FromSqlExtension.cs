@@ -79,6 +79,7 @@ public static partial class FromSqlExtension
     /// Add direct SQL commands to relate with the object properties.
     /// </summary>
     /// <remarks>
+    ///     <para><b>Important</b>: If you use this method, remember not to add in the query any WHERE or SELECT statement; use the link method instead.</para>
     ///     <para>Useful in performance scenarios, as long as the <paramref name="sqlCommand"/> could be related with the direct table column.</para>
     ///     <para>The property name will be changed to the sql command in the MYSQL query.</para>
     /// </remarks>

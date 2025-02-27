@@ -8,5 +8,6 @@ public record SimpleQueryTranslatorResult(
     CommandLocaleArray AdditionalCommands,
     string SelectSql,
     string HavingSql,
+    string WhereSql,
     string OrderBySql,
     string LimitSql);

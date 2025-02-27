@@ -85,7 +85,8 @@ public class SimpleQueryTranslator
                 Columns: Array.Empty<string>(),
                 AdditionalCommands: new(_addionalCommands),
                 SelectSql: NormalizeSelect(),
-                HavingSql: NormalizeHaving(),
+                HavingSql: string.Empty,
+                WhereSql: NormalizeWhere(),
                 OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
                 LimitSql: NormalizeLimit());
 
@@ -95,6 +96,7 @@ public class SimpleQueryTranslator
             SelectSql: string.Empty,
             AdditionalCommands: new(_addionalCommands),
             HavingSql: NormalizeHaving(),
+            WhereSql: string.Empty,
             OrderBySql: NormalizeOrderBy(orderResult.OrderBy),
             LimitSql: NormalizeLimit());
     }
@@ -213,12 +215,31 @@ public class SimpleQueryTranslator
         return string.Concat('\n', "HAVING ", whereClauses);
     }
 
+    private string NormalizeWhere()
+    {
+        var whereClauses = _whereBuilder.ToString();
+
+        if (string.IsNullOrWhiteSpace(whereClauses))
+            return string.Empty;
+
+        return string.Concat('\n', "WHERE ", whereClauses);
+    }
+
     private string NormalizeSelect()
     {
-        var selectSql =
-            string.Join(",\n", _renamedProperties.Keys.OrderBy(e => e).Select(_columnNameProvider.GetColumnName));
+        var columnsMapped =
+            _selectVisitor.Columns.Count == 0
+            ? _renamedProperties.Keys
+            : _selectVisitor.Columns;
 
-        return string.Concat('\n', "SELECT\n", selectSql);
+        var selectSql =
+            string.Join(
+                ",\n",
+                columnsMapped.OrderBy(e => e).Select(col =>
+                    string.Concat(_columnNameProvider.GetColumnName(col), " AS ", _columnNameProvider.TransformColumn(col)))
+            );
+        
+        return string.Concat('\n', "SELECT\n", selectSql, ' ');
     }
 
     private string NormalizeLimit()
