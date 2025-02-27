@@ -24,7 +24,7 @@ public static partial class FromSqlExtension
     ///     <item>Select</item>
     ///     </list>
     /// </remarks>
-    public static IFromSqlQueryable<TEntity> SqlAsQueryable<TEntity>(
+    public static IQueryable<TEntity> SqlAsQueryable<TEntity>(
         this IDbConnection connection,
         string sql,
         object? parameters = null,
@@ -51,29 +51,13 @@ public static partial class FromSqlExtension
     ///     <item>Select</item>
     ///     </list>
     /// </remarks>
-    public static IFromSqlQueryable<TEntity> SqlAsQueryable<TEntity>(
+    public static IQueryable<TEntity> SqlAsQueryable<TEntity>(
         this IDbConnection connection,
         CommandDefinition commandDefinition)
         where TEntity : class
     {
         return new InternalQueryable<TEntity>(connection, commandDefinition, typeof(TEntity));
     }
-
-    /// <summary>
-    /// Add direct columns related to object properties or fields.
-    /// </summary>
-    /// <remarks>
-    ///     <para>Useful in performance scenarios, as long as the <paramref name="columnName"/> could be the direct table column.</para>
-    ///     <para>The property name will be changed to the column name in the MYSQL query.</para>
-    /// </remarks>
-    public static IFromSqlQueryable<TEntity> SetColumnName<TEntity, TIn>(
-        this IFromSqlQueryable<TEntity> current,
-        Expression<Func<TEntity, TIn>> property,
-        string columnName)
-        => (IFromSqlQueryable<TEntity>)SetColumnName(
-            current: (IQueryable<TEntity>)current,
-            property: property,
-            columnName: columnName);
 
     /// <summary>
     /// Add direct SQL commands to relate with the object properties.
