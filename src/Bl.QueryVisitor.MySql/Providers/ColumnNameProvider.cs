@@ -22,6 +22,9 @@ public class ColumnNameProvider
         return TransformColumn(parsedColumnName ?? column, parsedColumnName is not null);
     }
 
+    public string TransformColumn(string column)
+        => TransformColumn(column, false);
+
     protected virtual string TransformColumn(string column, bool columnMapped)
     {
         return column;
