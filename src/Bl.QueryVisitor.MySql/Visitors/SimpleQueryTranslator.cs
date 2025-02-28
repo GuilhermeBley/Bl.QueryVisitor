@@ -24,7 +24,7 @@ public class SimpleQueryTranslator
     private uint? _take = null;
     private readonly ParamDictionary _parameters = new();
     private IEnumerable<string> _columns => _selectVisitor.Columns;
-    private SelectVisitor _selectVisitor = new SelectVisitor();
+    private SelectVisitor? _selectVisitor;
 
     /// <summary>
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
@@ -69,13 +69,22 @@ public class SimpleQueryTranslator
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
     {
+        var genericListType = 
+            expression is MethodCallExpression methodCallExpression
+            ? methodCallExpression.Arguments.FirstOrDefault()?.Type.GetGenericArguments() ?? Array.Empty<Type>()
+            : expression.Type.GetGenericArguments();
+        if (genericListType.Length != 1)
+        {
+            throw new ArgumentException("It's just supported Enumerable with a single generic argument.");
+        }
+
         _whereBuilder.Clear();
-        _selectVisitor = new();
+        _selectVisitor = new(genericListType[0]);
         _parameters.Clear();
         _skip = null;
         _take = null;
 
-        var orderResult = new OrderByExpressionVisitor(_columnNameProvider).Translate(expression);
+        var orderResult = new OrderByExpressionVisitor(_columnNameProvider, genericListType[0]).Translate(expression);
 
         this.Visit(orderResult.Others);
 
@@ -126,7 +135,7 @@ public class SimpleQueryTranslator
 
             var stripedQuoteSelect = StripQuotes(node.Arguments[1]);
 
-            selectVisitor.TranslateColumns(stripedQuoteSelect);
+            selectVisitor?.TranslateColumns(stripedQuoteSelect);
 
             Expression nextExpression = node.Arguments[0];
 

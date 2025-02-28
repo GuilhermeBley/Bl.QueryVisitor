@@ -12,10 +12,14 @@ internal class OrderByExpressionVisitor
     : ExpressionVisitor
 {
     private readonly ColumnNameProvider _columnNameProvider;
+    private readonly Type _modelType;
 
-    public OrderByExpressionVisitor(ColumnNameProvider columnNameProvider)
+    public OrderByExpressionVisitor(
+        ColumnNameProvider columnNameProvider,
+        Type modelType)
     {
         _columnNameProvider = columnNameProvider;
+        _modelType = modelType;
     }
 
     private readonly List<MethodCallExpression> _orderCalls = new();
@@ -139,7 +143,7 @@ internal class OrderByExpressionVisitor
         LambdaExpression lambdaExpression = (LambdaExpression)unary.Operand;
 
         MemberExpression? body = lambdaExpression.Body as MemberExpression;
-        if (body != null)
+        if (body?.Member.DeclaringType == _modelType)
         {
             string newOrder;
 

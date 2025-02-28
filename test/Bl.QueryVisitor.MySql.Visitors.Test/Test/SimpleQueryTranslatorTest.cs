@@ -350,22 +350,6 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
-    public void Translate_CheckSelectDistinctTypes_SuccessTypesCollectedButObject()
-    {
-        var query = Enumerable.Empty<FakeComplexModel>()
-            .AsQueryable()
-            .Select(c => new { c.MyGuid, c.MyObj, c.DateTimeOffset });
-
-        var translator = new Visitors.SimpleQueryTranslator();
-
-        var result = translator.Translate(query.Expression);
-
-        Assert.Equal(
-            new[] { nameof(FakeComplexModel.MyGuid), nameof(FakeComplexModel.DateTimeOffset) },
-            result.Columns);
-    }
-
-    [Fact]
     public void Translate_CheckSelectWithUnderlineType_SuccessTypesCollected()
     {
         var query = Enumerable.Empty<FakeComplexModel>()

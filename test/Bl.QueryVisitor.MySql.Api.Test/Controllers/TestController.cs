@@ -1,7 +1,9 @@
 using Bl.QueryVisitor.Extension;
+using Bl.QueryVisitor.MySql.Api.Test.Controllers;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 
@@ -36,6 +38,31 @@ public class TestController : ControllerBase
         _logger.LogInformation(
             result.ToSqlText());
         return Ok(result);
+    }
+
+    [HttpGet("ColumnName")]
+    [EnableQuery]
+    public async Task<ActionResult<IQueryable<FakeModel>>> GetWithColumnName(
+        [FromServices] ODataQueryOptions<FakeModel> options)
+    {
+        var queryable =
+            CreateConnection()
+            .SqlAsQueryable<FakeModel>(new CommandDefinition(
+                "FROM `queryable-test`.FakeModel a"))
+            .SetColumnName(e => e.Id, "a.Id")
+            .SetColumnName(e => e.InsertedAt, "a.InsertedAt")
+            .SetColumnName(e => e.InsertedAtOnlyDate, "a.InsertedAtOnlyDate")
+            .SetColumnName(e => e.Name, "a.Name")
+            .EnsureAllColumnSet();
+
+        var exp = new ODataExpressionVisitorSimplifier().Visit(options.ApplyTo(queryable).Expression);
+
+        var sql = options.ApplyTo(queryable).ToSqlText();
+        _logger.LogInformation(sql);
+
+        await Task.CompletedTask;
+
+        return Ok(queryable);
     }
 
     [HttpGet("2")]
