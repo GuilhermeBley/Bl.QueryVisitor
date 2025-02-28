@@ -39,7 +39,8 @@ internal class InternalQueryProvider
     }
 
     public IQueryable CreateQuery(Expression expression)
-        => new InternalQueryable<object>(
+    {
+        var query = new InternalQueryable<object>(
             dbConnection: _dbConnection,
             commandDefinition: _commandDefinition,
             model: this._model,
@@ -49,8 +50,14 @@ internal class InternalQueryProvider
             EnsureAllColumnsMapped = _ensureAllColumnsMapped
         };
 
+        query.AdditionalCommands.AddRange(_additionalCommands);
+
+        return query;
+    }
+
     public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-        => new InternalQueryable<TElement>(
+    {
+        var query = new InternalQueryable<TElement>(
             dbConnection: _dbConnection,
             commandDefinition: _commandDefinition,
             model: this._model,
@@ -59,6 +66,11 @@ internal class InternalQueryProvider
         {
             EnsureAllColumnsMapped = _ensureAllColumnsMapped
         };
+
+        query.AdditionalCommands.AddRange(_additionalCommands);
+
+        return query;
+    }
 
     public object? Execute(Expression expression)
         => Execute<IEnumerable<object>>(expression);

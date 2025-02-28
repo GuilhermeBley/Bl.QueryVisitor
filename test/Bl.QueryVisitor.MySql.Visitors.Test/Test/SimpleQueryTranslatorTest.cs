@@ -195,7 +195,6 @@ public class SimpleQueryTranslatorTest
             .AsQueryable()
             .Where(model => model.Id == 1)
             .OrderBy(model => model.Name)
-            .ThenByDescending(model => model.Id)
             .OrderByDescending(model => model.InsertedAt)
             .ThenBy(model => model.Id);
 
@@ -203,7 +202,7 @@ public class SimpleQueryTranslatorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nORDER BY `InsertedAt` DESC, `Id` ASC, `Name` ASC, `Id` DESC", result.OrderBySql);
+        Assert.Equal("\nORDER BY `InsertedAt` DESC, `Id` ASC, `Name` ASC", result.OrderBySql);
     }
 
     [Fact]
@@ -493,5 +492,18 @@ public class SimpleQueryTranslatorTest
         var result = query.ToSqlText();
 
         Assert.Contains("SET NAMES = 'latin';", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OrderBySql_ShouldPersistTheFirstValueIfDuplicated()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .OrderBy(e => e.InsertedAt)
+            .ThenByDescending(e => e.InsertedAt);
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("ORDER BY `InsertedAt` ASC;", result, StringComparison.OrdinalIgnoreCase);
     }
 }

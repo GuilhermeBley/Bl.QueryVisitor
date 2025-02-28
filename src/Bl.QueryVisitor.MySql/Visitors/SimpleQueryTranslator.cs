@@ -24,7 +24,7 @@ public class SimpleQueryTranslator
     private uint? _take = null;
     private readonly ParamDictionary _parameters = new();
     private IEnumerable<string> _columns => _selectVisitor.Columns;
-    private SelectVisitor? _selectVisitor;
+    private SelectVisitor _selectVisitor = new(typeof(object));
 
     /// <summary>
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
@@ -83,6 +83,8 @@ public class SimpleQueryTranslator
         _parameters.Clear();
         _skip = null;
         _take = null;
+
+        expression = new ConditionalExpressionVisitorSimplifier().Visit(expression);
 
         var orderResult = new OrderByExpressionVisitor(_columnNameProvider, genericListType[0]).Translate(expression);
 

@@ -1,6 +1,9 @@
 using Bl.QueryVisitor.MySql.Providers;
 using Bl.QueryVisitor.MySql.Visitors;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Linq.Expressions;
+using System.Net.NetworkInformation;
 using System.Text;
 
 namespace Bl.QueryVisitor.Visitors;
@@ -102,43 +105,68 @@ internal class OrderByExpressionVisitor
     {
         var correctOrderByReading = _orderCalls.Reverse<MethodCallExpression>();
 
-        List<StringBuilder> orders = new();
-        StringBuilder? currentOrder = null;
-
+        var orderItems = new List<OrderByItem[]>();
+        
         foreach (var m in correctOrderByReading)
             switch (m.Method.Name)
             {
                 case ("OrderBy"):
-                    currentOrder = new();
-                    orders.Insert(0, currentOrder);
-                    ParseOrderByExpressionToBuilder(m, isAsc: true, reorder: true, currentOrder);
+                    ParseOrderByExpressionToList(m, isAsc: true, reorder: true, orderItems);
                     break;
                 case ("OrderByDescending"):
-                    currentOrder = new();
-                    orders.Insert(0, currentOrder);
-                    ParseOrderByExpressionToBuilder(m, isAsc: false, reorder: true, currentOrder);
+                    ParseOrderByExpressionToList(m, isAsc: false, reorder: true, orderItems);
                     break;
                 case ("ThenBy"):
-                    if (currentOrder is null)
+                    if (orderItems.Count == 0)
                         throw new InvalidOperationException("Before use 'ThenBy', add 'OrderBy' or 'OrderbyDescending'.");
-                    ParseOrderByExpressionToBuilder(m, isAsc: true, reorder: false, currentOrder);
+                    ParseOrderByExpressionToList(m, isAsc: true, reorder: false, orderItems);
                     break;
                 case ("ThenByDescending"):
-                    if (currentOrder is null)
+                    if (orderItems.Count == 0)
                         throw new InvalidOperationException("Before use 'ThenByDescending', add 'OrderBy' or 'OrderbyDescending'.");
-                    ParseOrderByExpressionToBuilder(m, isAsc: false, reorder: false, currentOrder);
+                    ParseOrderByExpressionToList(m, isAsc: false, reorder: false, orderItems);
                     break;
                 default:
                     throw new NotImplementedException($"Method '{m.Method.Name}' not mapped.");
             }
 
-        return string.Join(", ", orders);
+        var orderSqlCommand = string.Join(
+            ", ",
+            orderItems.SelectMany(e => e));
+
+        return orderSqlCommand;
+    }
+
+    private void ParseOrderByExpressionToList(MethodCallExpression expression, bool isAsc, bool reorder, List<OrderByItem[]> items)
+    {
+        UnaryExpression unary = (UnaryExpression)expression.Arguments[1];
+        LambdaExpression lambdaExpression = (LambdaExpression)unary.Operand;
+
+        MemberExpression? body = lambdaExpression.Body as MemberExpression;
+        if (body?.Member.DeclaringType == _modelType)
+        {
+            var columnName = _columnNameProvider.GetColumnName(body.Member.Name);
+
+            OrderByItem newOrder = new(columnName, isAsc, body.Member.Name);
+
+            if (items.SelectMany(e => e).Contains(newOrder, OrderByItem.Comparer))
+            {
+                return;
+            }
+
+            if (reorder)
+                items.Insert(0, Array.Empty<OrderByItem>());
+
+            var currentItems = items[0];
+
+            items[0] = currentItems.Append(newOrder).ToArray();
+        }
     }
 
     private void ParseOrderByExpressionToBuilder(MethodCallExpression expression, bool isAsc, bool reorder, StringBuilder builder)
     {
         var order = isAsc ? "ASC" : "DESC";
-
+        
         UnaryExpression unary = (UnaryExpression)expression.Arguments[1];
         LambdaExpression lambdaExpression = (LambdaExpression)unary.Operand;
 
@@ -159,6 +187,48 @@ internal class OrderByExpressionVisitor
             builder.Clear();
 
             builder.Append(newOrder);
+        }
+    }
+
+    private class OrderByItem
+    {
+        public readonly static IEqualityComparer<OrderByItem?> Comparer = new InternalComparer();
+
+        /// <summary>
+        /// Class property name
+        /// </summary>
+        public string PropertyName { get; }
+        /// <summary>
+        /// The real SQL value
+        /// </summary>
+        public string SqlValue { get; }
+        public bool Asc { get; }
+
+        public OrderByItem(string sqlValue, bool asc, string propertyName)
+        {
+            SqlValue = sqlValue;
+            Asc = asc;
+            PropertyName = propertyName;
+        }
+
+        public override string ToString()
+        {
+            return string.Concat(SqlValue, ' ', Asc ? "ASC" : "DESC");
+        }
+
+        private class InternalComparer : IEqualityComparer<OrderByItem?>
+        {
+            public bool Equals(OrderByItem? x, OrderByItem? y)
+            {
+                if (x == null || y == null) return false;
+
+                return x.PropertyName.Equals(y.PropertyName, StringComparison.OrdinalIgnoreCase);
+            }
+
+            public int GetHashCode([DisallowNull] OrderByItem? obj)
+            {
+                return obj.PropertyName.GetHashCode(StringComparison.OrdinalIgnoreCase);
+            }
         }
     }
 
