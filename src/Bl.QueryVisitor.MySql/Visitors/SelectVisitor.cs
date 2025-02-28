@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 
 namespace Bl.QueryVisitor.Visitors;
 
-internal class SelectVisitor 
+internal class SelectVisitor
     : ExpressionVisitor,
     IItemTranslator
 {
@@ -20,12 +20,14 @@ internal class SelectVisitor
     private bool _anyColumnAlreadyTranslated = false;
     private readonly HashSet<string> _columns = new();
     private readonly List<Func<object?, object?>> _transformations = new();
+    private readonly Type _modelType;
 
     public IReadOnlyCollection<string> Columns => _columns;
     public bool ColumnsAlreadyTranslated => _columnsAlreadyTranslated;
 
-    public SelectVisitor()
+    public SelectVisitor(Type modelType)
     {
+        _modelType = modelType;
     }
 
     public IEnumerable<string> TranslateColumns(Expression expression)
@@ -85,28 +87,10 @@ internal class SelectVisitor
 
     protected override Expression VisitMember(MemberExpression node)
     {
-        if (!CanBeSelected(node.Type))
+        if (node.Member.DeclaringType != _modelType)
             return base.VisitMember(node);
-
         _columns.Add(node.Member.Name);
         _anyColumnAlreadyTranslated = true;
         return base.VisitMember(node);
-    }
-
-    private static bool CanBeSelected(Type type)
-    {
-        type = Nullable.GetUnderlyingType(type)
-            ?? type;
-
-        if (Type.GetTypeCode(type) != TypeCode.Object)
-            return true;
-
-        if (type.IsEnum)
-            return true;
-
-        if (AllowedTypes.Contains(type))
-            return true;
-
-        return false;
     }
 }

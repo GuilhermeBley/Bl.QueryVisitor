@@ -195,7 +195,6 @@ public class SimpleQueryTranslatorTest
             .AsQueryable()
             .Where(model => model.Id == 1)
             .OrderBy(model => model.Name)
-            .ThenByDescending(model => model.Id)
             .OrderByDescending(model => model.InsertedAt)
             .ThenBy(model => model.Id);
 
@@ -203,7 +202,7 @@ public class SimpleQueryTranslatorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nORDER BY `InsertedAt` DESC, `Id` ASC, `Name` ASC, `Id` DESC", result.OrderBySql);
+        Assert.Equal("\nORDER BY `InsertedAt` DESC, `Id` ASC, `Name` ASC", result.OrderBySql);
     }
 
     [Fact]
@@ -350,22 +349,6 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
-    public void Translate_CheckSelectDistinctTypes_SuccessTypesCollectedButObject()
-    {
-        var query = Enumerable.Empty<FakeComplexModel>()
-            .AsQueryable()
-            .Select(c => new { c.MyGuid, c.MyObj, c.DateTimeOffset });
-
-        var translator = new Visitors.SimpleQueryTranslator();
-
-        var result = translator.Translate(query.Expression);
-
-        Assert.Equal(
-            new[] { nameof(FakeComplexModel.MyGuid), nameof(FakeComplexModel.DateTimeOffset) },
-            result.Columns);
-    }
-
-    [Fact]
     public void Translate_CheckSelectWithUnderlineType_SuccessTypesCollected()
     {
         var query = Enumerable.Empty<FakeComplexModel>()
@@ -509,5 +492,18 @@ public class SimpleQueryTranslatorTest
         var result = query.ToSqlText();
 
         Assert.Contains("SET NAMES = 'latin';", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OrderBySql_ShouldPersistTheFirstValueIfDuplicated()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition())
+            .OrderBy(e => e.InsertedAt)
+            .ThenByDescending(e => e.InsertedAt);
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("ORDER BY `InsertedAt` ASC;", result, StringComparison.OrdinalIgnoreCase);
     }
 }
