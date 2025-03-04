@@ -147,15 +147,15 @@ internal class OrderByExpressionVisitor
         {
             var columnName = _columnNameProvider.GetColumnName(body.Member.Name);
 
+            if (reorder)
+                items.Clear();
+
             OrderByItem newOrder = new(columnName, isAsc, body.Member.Name);
 
             if (items.Contains(newOrder, OrderByItem.Comparer))
             {
                 return;
             }
-
-            if (reorder)
-                items.Clear();
 
             items.Add(newOrder);
         }

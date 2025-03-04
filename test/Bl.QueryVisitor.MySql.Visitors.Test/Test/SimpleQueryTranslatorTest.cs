@@ -222,6 +222,24 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
+    public void Translate_ShouldReorderWorksWithDuplicatedSorts()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Id == 1)
+            .OrderBy(model => model.Name)
+            .ThenBy(model => model.Id)
+            .OrderBy(model => model.Id)
+            .ThenBy(model => model.InsertedAt);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var translation = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nORDER BY `Id` ASC, `InsertedAt` ASC", translation.OrderBySql);
+    }
+
+    [Fact]
     public void Translate_CheckLimitText_SuccessLimitFound()
     {
         var query = Enumerable.Empty<FakeModel>()
