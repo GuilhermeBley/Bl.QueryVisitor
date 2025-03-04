@@ -105,7 +105,7 @@ internal class OrderByExpressionVisitor
     {
         var correctOrderByReading = _orderCalls.Reverse<MethodCallExpression>();
 
-        var orderItems = new List<OrderByItem[]>();
+        var orderItems = new List<OrderByItem>();
         
         foreach (var m in correctOrderByReading)
             switch (m.Method.Name)
@@ -132,12 +132,12 @@ internal class OrderByExpressionVisitor
 
         var orderSqlCommand = string.Join(
             ", ",
-            orderItems.SelectMany(e => e));
+            orderItems.Select(e => e));
 
         return orderSqlCommand;
     }
 
-    private void ParseOrderByExpressionToList(MethodCallExpression expression, bool isAsc, bool reorder, List<OrderByItem[]> items)
+    private void ParseOrderByExpressionToList(MethodCallExpression expression, bool isAsc, bool reorder, List<OrderByItem> items)
     {
         UnaryExpression unary = (UnaryExpression)expression.Arguments[1];
         LambdaExpression lambdaExpression = (LambdaExpression)unary.Operand;
@@ -149,17 +149,15 @@ internal class OrderByExpressionVisitor
 
             OrderByItem newOrder = new(columnName, isAsc, body.Member.Name);
 
-            if (items.SelectMany(e => e).Contains(newOrder, OrderByItem.Comparer))
+            if (items.Contains(newOrder, OrderByItem.Comparer))
             {
                 return;
             }
 
             if (reorder)
-                items.Insert(0, Array.Empty<OrderByItem>());
+                items.Clear();
 
-            var currentItems = items[0];
-
-            items[0] = currentItems.Append(newOrder).ToArray();
+            items.Add(newOrder);
         }
     }
 
