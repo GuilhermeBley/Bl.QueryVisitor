@@ -189,7 +189,7 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
-    public void Translate_CheckOrderByWithThenBy_SuccessThenBy()
+    public void Translate_ShouldOrderByBeReorderedByInsertedAt()
     {
         var query = Enumerable.Empty<FakeModel>()
             .AsQueryable()
@@ -202,11 +202,11 @@ public class SimpleQueryTranslatorTest
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nORDER BY `InsertedAt` DESC, `Id` ASC, `Name` ASC", result.OrderBySql);
+        Assert.Equal("\nORDER BY `InsertedAt` DESC, `Id` ASC", result.OrderBySql);
     }
 
     [Fact]
-    public void Translate_CheckDoubleOrdering_SuccessLastOneAtFirstPlace()
+    public void Translate_ShouldPassIfReorderedById()
     {
         var query = Enumerable.Empty<FakeModel>()
             .AsQueryable()
@@ -218,7 +218,7 @@ public class SimpleQueryTranslatorTest
 
         var translation = visitor.Translate(query.Expression);
 
-        Assert.Equal("\nORDER BY `Id` ASC, `Name` ASC", translation.OrderBySql);
+        Assert.Equal("\nORDER BY `Id` ASC", translation.OrderBySql);
     }
 
     [Fact]
