@@ -159,6 +159,11 @@ public class SimpleQueryTranslator
                 return this.Visit(nextExpression);
             }
         }
+        else if (node.Arguments.Count > 0 &&
+            node.Arguments[0] is MethodCallExpression m)
+        {
+            return this.Visit(m); // going to next
+        }
 
         return node;
     }

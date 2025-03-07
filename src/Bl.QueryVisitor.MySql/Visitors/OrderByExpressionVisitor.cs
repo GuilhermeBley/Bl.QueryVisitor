@@ -16,6 +16,7 @@ internal class OrderByExpressionVisitor
 {
     private readonly ColumnNameProvider _columnNameProvider;
     private readonly Type _modelType;
+    private readonly List<OrderByItem> _orderItems = new List<OrderByItem>();
 
     public OrderByExpressionVisitor(
         ColumnNameProvider columnNameProvider,
@@ -25,19 +26,21 @@ internal class OrderByExpressionVisitor
         _modelType = modelType;
     }
 
-    private readonly List<MethodCallExpression> _orderCalls = new();
-
     public Result Translate(Expression? node)
     {
-        _orderCalls.Clear();
+        _orderItems.Clear();
 
-        node = new MySqlNullSimplifier().Visit(node);
+        node = new MySqlNullSimplifier().Visit(node ?? throw new InvalidOperationException());
 
-        var editedExpression = this.Visit(node) ?? throw new InvalidOperationException();
+        var t = node.ToString();
 
-        var orderText = ParseOrderByExpression();
+        this.Visit(node); // visiting nodes to populate _orderItems
 
-        return new Result(editedExpression, orderText);
+        var orderSqlCommand = string.Join(
+            ", ",
+            _orderItems.Select(e => e));
+
+        return new Result(node, orderSqlCommand);
     }
 
     /// <summary>
@@ -47,117 +50,76 @@ internal class OrderByExpressionVisitor
     {
         if (m.Method.Name == "ThenBy")
         {
-            if (CanParseOrderByExpression(m))
+            if (CanParseOrderByExpression(m, out var member))
             {
+                AddAndParseOrderByExpression(member, true);
+
                 Expression nextExpression = m.Arguments[0];
 
-                _orderCalls.Add(m);
-
-                return this.Visit(nextExpression);
+                return this.Visit(nextExpression); // going to the next
             }
         }
         else if (m.Method.Name == "OrderBy")
         {
-            if (CanParseOrderByExpression(m))
+            if (CanParseOrderByExpression(m, out var member))
             {
-                Expression nextExpression = m.Arguments[0];
+                AddAndParseOrderByExpression(member, true);
 
-                _orderCalls.Add(m);
-
-                return this.Visit(nextExpression);
+                return m; // stopping node visit
             }
         }
         else if (m.Method.Name == "ThenByDescending")
         {
-            if (CanParseOrderByExpression(m))
+            if (CanParseOrderByExpression(m, out var member))
             {
+                AddAndParseOrderByExpression(member, false);
+
                 Expression nextExpression = m.Arguments[0];
 
-                _orderCalls.Add(m);
-
-                return this.Visit(nextExpression);
+                return this.Visit(nextExpression); // going to the next
             }
         }
         else if (m.Method.Name == "OrderByDescending")
         {
-            if (CanParseOrderByExpression(m))
+            if (CanParseOrderByExpression(m, out var member))
             {
-                Expression nextExpression = m.Arguments[0];
+                AddAndParseOrderByExpression(member, false);
 
-                _orderCalls.Add(m);
-
-                return this.Visit(nextExpression);
+                return m; // stopping node visit
             }
         }
 
         return base.VisitMethodCall(m);
     }
 
-    private static bool CanParseOrderByExpression(MethodCallExpression expression)
+    private static bool CanParseOrderByExpression(MethodCallExpression expression, [NotNullWhen(true)] out MemberExpression? memberExpression)
     {
         UnaryExpression unary = (UnaryExpression)expression.Arguments[1];
         LambdaExpression lambdaExpression = (LambdaExpression)unary.Operand;
 
-        return lambdaExpression.Body is MemberExpression;
+        memberExpression = lambdaExpression.Body as MemberExpression;
+
+        return memberExpression is not null;
     }
 
-    private string ParseOrderByExpression()
+    private void AddAndParseOrderByExpression(MemberExpression body, bool isAsc)
     {
-        var correctOrderByReading = _orderCalls.Reverse<MethodCallExpression>();
+        var items = _orderItems;
 
-        var orderItems = new List<OrderByItem>();
-        
-        foreach (var m in correctOrderByReading)
-            switch (m.Method.Name)
-            {
-                case ("OrderBy"):
-                    ParseOrderByExpressionToList(m, isAsc: true, reorder: true, orderItems);
-                    break;
-                case ("OrderByDescending"):
-                    ParseOrderByExpressionToList(m, isAsc: false, reorder: true, orderItems);
-                    break;
-                case ("ThenBy"):
-                    if (orderItems.Count == 0)
-                        throw new InvalidOperationException("Before use 'ThenBy', add 'OrderBy' or 'OrderbyDescending'.");
-                    ParseOrderByExpressionToList(m, isAsc: true, reorder: false, orderItems);
-                    break;
-                case ("ThenByDescending"):
-                    if (orderItems.Count == 0)
-                        throw new InvalidOperationException("Before use 'ThenByDescending', add 'OrderBy' or 'OrderbyDescending'.");
-                    ParseOrderByExpressionToList(m, isAsc: false, reorder: false, orderItems);
-                    break;
-                default:
-                    throw new NotImplementedException($"Method '{m.Method.Name}' not mapped.");
-            }
-
-        var orderSqlCommand = string.Join(
-            ", ",
-            orderItems.Select(e => e));
-
-        return orderSqlCommand;
-    }
-
-    private void ParseOrderByExpressionToList(MethodCallExpression expression, bool isAsc, bool reorder, List<OrderByItem> items)
-    {
-        UnaryExpression unary = (UnaryExpression)expression.Arguments[1];
-        LambdaExpression lambdaExpression = (LambdaExpression)unary.Operand;
-
-        MemberExpression? body = lambdaExpression.Body as MemberExpression;
         if (body?.Member.DeclaringType == _modelType)
         {
             var columnName = _columnNameProvider.GetColumnName(body.Member.Name);
 
-            if (reorder)
-                items.Clear();
-
             OrderByItem newOrder = new(columnName, isAsc, body.Member.Name);
 
-            if (items.Contains(newOrder, OrderByItem.Comparer))
+            var itemAlreadyAdded = items.FirstOrDefault(e => OrderByItem.Comparer.Equals(newOrder, e));
+
+            if (itemAlreadyAdded is not null)
             {
-                return;
+                _orderItems.Remove(itemAlreadyAdded);
             }
 
-            items.Add(newOrder);
+            items.Insert(0, newOrder);
         }
     }
 
