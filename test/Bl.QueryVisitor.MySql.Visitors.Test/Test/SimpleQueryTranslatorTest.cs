@@ -524,4 +524,29 @@ public class SimpleQueryTranslatorTest
 
         Assert.Contains("ORDER BY `InsertedAt` ASC;", result, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void OrderBySql_ShouldMatchWithMultipleClausesAndOrder()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("SELECT Id From table.table"))
+            .Where(e => e.InsertedAt > new DateTime(1900, 1, 1))
+            .OrderBy(e => e.InsertedAt)
+            .ThenByDescending(e => e.InsertedAt)
+            .Where(e => e.Id == 12)
+            .OrderBy(e => e.Id)
+            .Skip(10)
+            .Take(100);
+
+        var result = query.ToSqlText();
+
+        string[] matches = [
+            "(`InsertedAt` > @P1000) AND (`Id` = @P1001)",
+            "ORDER BY `Id` ASC",
+            "LIMIT 100 OFFSET 10",
+        ];
+
+        Assert.All(matches, m =>
+            Assert.Contains(m, result, StringComparison.OrdinalIgnoreCase));
+    }
 }
