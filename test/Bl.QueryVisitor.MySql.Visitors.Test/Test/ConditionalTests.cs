@@ -120,9 +120,24 @@ public class ConditionalTests
         Assert.Contains("`IsTrueNullable` = @P1000", result.HavingSql);
     }
 
+    [Fact]
+    public void SimpleQueryTranslator_ShouldSimplifyTheCondition()
+    {
+        var query = Enumerable.Empty<FakeBooleanModel>()
+            .AsQueryable()
+            .Where(m => (m.Value <= 0) == true);
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Contains("`Value` <= @P1000", result.HavingSql);
+    }
+
     private class FakeBooleanModel
     {
         public bool IsTrue { get; set; }
         public bool? IsTrueNullable { get; set; }
+        public decimal? Value { get; set; }
     }
 }
