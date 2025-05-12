@@ -45,7 +45,7 @@ public class ConditionalTests
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Contains("`IsTrue` = NULL", result.HavingSql);
+        Assert.Contains("`IsTrue` IS NULL", result.HavingSql);
     }
 
     [Fact]
@@ -120,9 +120,30 @@ public class ConditionalTests
         Assert.Contains("`IsTrueNullable` = @P1000", result.HavingSql);
     }
 
+    [Fact]
+    public void SimpleQueryTranslator_ShouldCompareUnaryExpWithPossibleNullableBooleans()
+    {
+        var other = new FakeBooleanModel()
+        {
+            Value = 23
+        };
+        bool? trueValue = true;
+        var query = Enumerable.Empty<FakeBooleanModel>()
+            .AsQueryable()
+            .Where(m => (m.Value <= other.Value) == trueValue);
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal(other.Value, result.Parameters.Values.FirstOrDefault());
+        Assert.Contains("`Value` <= @P1000", result.HavingSql);
+    }
+
     private class FakeBooleanModel
     {
         public bool IsTrue { get; set; }
         public bool? IsTrueNullable { get; set; }
+        public decimal? Value { get; set; }
     }
 }

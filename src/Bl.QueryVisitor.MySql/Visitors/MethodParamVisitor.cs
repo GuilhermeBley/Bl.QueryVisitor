@@ -1,17 +1,15 @@
-﻿using Bl.QueryVisitor.MySql.Providers;
-using Bl.QueryVisitor.MySql.Visitors;
+﻿using Bl.QueryVisitor.MySql.BlExpressions;
+using Bl.QueryVisitor.MySql.Providers;
 using System.Linq.Expressions;
 using System.Text;
-using System.Xml.Linq;
 
 namespace Bl.QueryVisitor.Visitors;
 
 internal class MethodParamVisitor
-    : ExpressionVisitor
+    :  ExpressionVisitor
 {
     private readonly ParamDictionary _parameters;
-    private StringBuilder _builder = new();
-
+    private readonly StringBuilder _builder = new();
     private readonly ColumnNameProvider _columnNameProvider;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
@@ -21,13 +19,13 @@ internal class MethodParamVisitor
         _columnNameProvider = columnNameProvider;
     }
 
-    public string TranslateMethod(Expression? expression)
+    public SqlCommandExpression TranslateMethod(Expression? expression)
     {
         _builder.Clear();
 
-        Visit(expression);
+        var exp = Visit(expression);
 
-        return _builder.ToString();
+        return new(_builder.ToString());
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
