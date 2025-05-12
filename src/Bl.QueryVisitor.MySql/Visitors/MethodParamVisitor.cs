@@ -2,6 +2,7 @@
 using Bl.QueryVisitor.MySql.Visitors;
 using System.Linq.Expressions;
 using System.Text;
+using System.Xml.Linq;
 
 namespace Bl.QueryVisitor.Visitors;
 
@@ -54,6 +55,18 @@ internal class MethodParamVisitor
             _builder.Append(')');
 
             return node;
+        }
+
+        if (node.Method.Name == "ToString" && !node.Method.IsStatic)
+        {
+            var convertedExp = Expression.Convert(node, typeof(object));
+
+            var instantiator = Expression
+                .Lambda<Func<object>>(convertedExp)
+                .Compile();
+            var res = instantiator();
+
+            return this.VisitConstant(Expression.Constant(res));
         }
 
 
@@ -199,6 +212,19 @@ internal class MethodParamVisitor
         return Visit(Expression.Constant(res));
     }
 
+    protected override Expression VisitUnary(UnaryExpression u)
+    {
+        switch (u.NodeType)
+        {
+            case ExpressionType.Convert:
+                this.Visit(u.Operand);
+                break;
+            default:
+                return base.VisitUnary(u);
+        }
+        return u;
+    }
+
     protected override Expression VisitConstant(ConstantExpression c)
     {
         IQueryable? q = c.Value as IQueryable;
@@ -232,15 +258,14 @@ internal class MethodParamVisitor
         }
         if (m.Expression is ConstantExpression constant)
         {
-            var objectMember = Expression.Convert(m, typeof(object));
+            var convertedExp = Expression.Convert(m, typeof(object));
 
-            var getterLambda = Expression.Lambda<Func<object>>(objectMember);
+            var instantiator = Expression
+                .Lambda<Func<object>>(convertedExp)
+                .Compile();
+            var res = instantiator();
 
-            var getter = getterLambda.Compile();
-
-            var result = getter();
-
-            return Visit(Expression.Constant(result));
+            return this.VisitConstant(Expression.Constant(res));
         }
 
         throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
