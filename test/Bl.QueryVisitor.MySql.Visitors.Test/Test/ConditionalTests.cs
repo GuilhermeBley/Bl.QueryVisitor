@@ -106,6 +106,20 @@ public class ConditionalTests
         Assert.Contains("`IsTrueNullable` = @P1000", result.HavingSql);
     }
 
+    [Fact]
+    public void SimpleQueryTranslator_ShouldMatchNullableBoolPropertyWithToString()
+    {
+        var query = Enumerable.Empty<FakeBooleanModel>()
+            .AsQueryable()
+            .Where(m => m.IsTrueNullable.Equals(true.ToString()));
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Contains("`IsTrueNullable` = @P1000", result.HavingSql);
+    }
+
     private class FakeBooleanModel
     {
         public bool IsTrue { get; set; }

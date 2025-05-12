@@ -57,6 +57,18 @@ internal class MethodParamVisitor
             return node;
         }
 
+        if (node.Method.Name == "ToString" && !node.Method.IsStatic)
+        {
+            var convertedExp = Expression.Convert(node, typeof(object));
+
+            var instantiator = Expression
+                .Lambda<Func<object>>(convertedExp)
+                .Compile();
+            var res = instantiator();
+
+            return this.VisitConstant(Expression.Constant(res));
+        }
+
 
         if (node.Method.Name == "Concat" && node.Method.IsStatic)
         {
