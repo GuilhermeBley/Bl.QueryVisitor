@@ -84,6 +84,7 @@ public class SimpleQueryTranslator
         _skip = null;
         _take = null;
 
+        expression = new SqlMethodSimplifier(_parameters, _columnNameProvider).Visit(expression);
         expression = new ConstExpressionVisitorSimplifier().Visit(expression);
         expression = new ConditionalExpressionVisitorSimplifier().Visit(expression);
 

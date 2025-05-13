@@ -31,16 +31,6 @@ internal class WhereVisitor
 
         return _whereBuilder.ToString();
     }
-    protected override Expression VisitMethodCall(MethodCallExpression node)
-    {
-        var methodVisitor = new MethodParamVisitor(_parameters, _columnNameProvider);
-
-        var sql = methodVisitor.TranslateMethod(node);
-
-        _whereBuilder.Append(sql);
-
-        return node;
-    }
 
     protected override Expression VisitUnary(UnaryExpression u)
     {
@@ -192,6 +182,12 @@ internal class WhereVisitor
 
     protected override Expression VisitExtension(Expression node)
     {
+        if (node is SqlCommandExpression sqlCommandExpression)
+        {
+            _whereBuilder.Append(sqlCommandExpression.Command);
+            return node;
+        }
+
         return base.VisitExtension(node);
     }
 

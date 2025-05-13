@@ -5,18 +5,26 @@ namespace Bl.QueryVisitor.MySql.BlExpressions;
 public class SqlCommandExpression : Expression
 {
     private string _command;
+    private MethodCallExpression _callExpression;
 
     public override bool CanReduce => true;
-    public override ExpressionType NodeType => ExpressionType.Constant;
+    public override ExpressionType NodeType => ExpressionType.Extension;
     public string Command => _command;
+    public override Type Type => _callExpression.Type;
 
-    public SqlCommandExpression(string command)
+    public SqlCommandExpression(string command, MethodCallExpression callExpression)
     {
         _command = command;
+        _callExpression = callExpression;
+    }
+
+    public override string ToString()
+    {
+        return _callExpression.ToString();
     }
 
     public override Expression Reduce()
     {
-        return Expression.Constant(_command, typeof(string));
+        return _callExpression;
     }
 }
