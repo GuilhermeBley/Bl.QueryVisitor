@@ -1,3 +1,4 @@
+using Bl.QueryVisitor.MySql.BlExpressions;
 using Bl.QueryVisitor.MySql.Providers;
 using Bl.QueryVisitor.MySql.Visitors;
 using System.Diagnostics.CodeAnalysis;
@@ -24,6 +25,17 @@ internal class OrderByExpressionVisitor
     {
         _columnNameProvider = columnNameProvider;
         _modelType = modelType;
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        // don't override any 'BlExpression'
+        if (node is BlExpression)
+        {
+            return node;
+        }
+
+        return base.VisitExtension(node);
     }
 
     public Result Translate(Expression? node)

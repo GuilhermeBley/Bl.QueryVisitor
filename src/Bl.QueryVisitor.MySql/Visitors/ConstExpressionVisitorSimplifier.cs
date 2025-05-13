@@ -10,7 +10,8 @@ internal class ConstExpressionVisitorSimplifier : ExpressionVisitor
 {
     protected override Expression VisitExtension(Expression node)
     {
-        if (node is SqlCommandExpression sqlCommandExpression)
+        // don't override any 'BlExpression'
+        if (node is BlExpression)
         {
             return node;
         }

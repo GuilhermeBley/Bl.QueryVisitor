@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using Bl.QueryVisitor.MySql.BlExpressions;
+using System.Linq.Expressions;
 
 namespace Bl.QueryVisitor.MySql.Visitors;
 
@@ -8,6 +9,18 @@ public class MySqlNullSimplifier
     private bool _translated;
     
     public MySqlNullSimplifier() { }
+
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        // don't override any 'BlExpression'
+        if (node is BlExpression)
+        {
+            return node;
+        }
+
+        return base.VisitExtension(node);
+    }
 
     protected override Expression VisitConditional(
         ConditionalExpression node)

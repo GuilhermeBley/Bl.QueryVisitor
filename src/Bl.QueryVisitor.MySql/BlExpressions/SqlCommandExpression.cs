@@ -2,7 +2,7 @@
 
 namespace Bl.QueryVisitor.MySql.BlExpressions;
 
-public class SqlCommandExpression : Expression
+public class SqlCommandExpression : BlExpression
 {
     private string _command;
     private MethodCallExpression _callExpression;
@@ -20,7 +20,7 @@ public class SqlCommandExpression : Expression
 
     public override string ToString()
     {
-        return _callExpression.ToString();
+        return _command;
     }
 
     public override Expression Reduce()

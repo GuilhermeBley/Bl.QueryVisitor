@@ -11,6 +11,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
     private readonly ParamDictionary _parameters;
     private readonly StringBuilder _builder;
     private readonly ColumnNameProvider _columnNameProvider;
+    private bool _methodStarted;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
     public SqlMethodSimplifier(ParamDictionary parameters, ColumnNameProvider columnNameProvider)
@@ -24,6 +25,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
     {
         if (node.Method.Name == "Equals" && node.Method.IsStatic)
         {
+            _methodStarted = true;
             base.Visit(node.Arguments[0]);
 
             _builder.Append(" = ");
@@ -35,6 +37,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
         }
         if (node.Method.Name == "Equals")
         {
+            _methodStarted = true;
             _builder.Append('(');
 
             base.Visit(node.Object);
@@ -64,6 +67,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
         if (node.Method.Name == "Concat" && node.Method.IsStatic)
         {
+            _methodStarted = true;
             _builder.Append("CONCAT(");
 
             var containsAfter = false;
@@ -85,6 +89,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
         }
         if (node.Method.Name == "Concat")
         {
+            _methodStarted = true;
             _builder.Append("CONCAT(");
 
             base.Visit(node.Object);
@@ -108,6 +113,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
         if (node.Method.Name == "Contains" && node.Arguments.Count == 1)
         {
+            _methodStarted = true;
             _builder.Append('(');
 
             base.Visit(node.Object);
@@ -126,6 +132,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
         if (node.Method.Name == "Contains" && node.Arguments.Count == 2)
         {
+            _methodStarted = true;
             if (node.Arguments[1] is not MemberExpression columnNameExp)
                 throw new InvalidOperationException($"Column name was not found in expression {node}.");
 
@@ -173,6 +180,7 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
         if (node.Method.Name == "StartsWith")
         {
+            _methodStarted = true;
             _builder.Append('(');
 
             base.Visit(node.Object);
@@ -198,6 +206,13 @@ internal class SqlMethodSimplifier : ExpressionVisitor
             ?? throw new InvalidOperationException($"Failed to cast node {node}.");
     }
 
+    protected override Expression VisitUnary(UnaryExpression node)
+    {
+        var operand = Visit(node.Operand);
+
+        return base.VisitUnary(node.Update(operand));
+    }
+
     protected override Expression VisitNew(NewExpression node)
     {
         var convertedExp = Expression.Convert(node, typeof(object));
@@ -212,6 +227,8 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
     protected override Expression VisitConstant(ConstantExpression c)
     {
+        if (!_methodStarted) return c; 
+
         IQueryable? q = c.Value as IQueryable;
 
         if (q == null && c.Value == null)
@@ -234,6 +251,8 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
     protected override Expression VisitMember(MemberExpression m)
     {
+        if (!_methodStarted) return m;
+
         if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
         {
             var columnName = _columnNameProvider.GetColumnName(m.Member.Name);
@@ -256,10 +275,15 @@ internal class SqlMethodSimplifier : ExpressionVisitor
         throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
     }
 
+    /// <summary>
+    /// End the method call
+    /// </summary>
     private Expression? CreateSqlExpressionByCurrentBuilder(MethodCallExpression node)
     {
         var sql = _builder.ToString();
         _builder.Clear();
+        _methodStarted = false;
+
         if (string.IsNullOrWhiteSpace(sql))
             return null;
 
