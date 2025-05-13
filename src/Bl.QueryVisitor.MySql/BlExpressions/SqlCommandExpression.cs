@@ -27,4 +27,13 @@ public class SqlCommandExpression : BlExpression
     {
         return _callExpression;
     }
+
+    protected override Expression VisitChildren(ExpressionVisitor visitor)
+    {
+        var exp = visitor.Visit(_callExpression);
+
+        if (exp is not MethodCallExpression) return this;
+
+        return new SqlCommandExpression(_command, (MethodCallExpression)exp);
+    }
 }

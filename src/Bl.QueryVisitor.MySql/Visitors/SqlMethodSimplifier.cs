@@ -23,33 +23,17 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
-        if (node.Method.Name == "Equals" && node.Method.IsStatic)
+        if (node.Method.Name == "Equals" && node.Method.IsStatic && node.Arguments.Count == 2)
         {
-            _methodStarted = true;
-            base.Visit(node.Arguments[0]);
-
-            _builder.Append(" = ");
-
-            base.Visit(node.Arguments[1]);
-
-            return CreateSqlExpressionByCurrentBuilder(node)
-                ?? throw new InvalidOperationException($"Failed to cast node {node}.");
+            return Expression.Equal(
+                Expression.Convert(node.Arguments[0], typeof(object)),
+                Expression.Convert(node.Arguments[1], typeof(object)));
         }
-        if (node.Method.Name == "Equals")
+        if (node.Method.Name == "Equals" && node.Object is not null)
         {
-            _methodStarted = true;
-            _builder.Append('(');
-
-            base.Visit(node.Object);
-
-            _builder.Append(" = ");
-
-            base.Visit(node.Arguments[0]);
-
-            _builder.Append(')');
-
-            return CreateSqlExpressionByCurrentBuilder(node)
-                ?? throw new InvalidOperationException($"Failed to cast node {node}.");
+            return Expression.Equal(
+                Expression.Convert(node.Object!, typeof(object)),
+                Expression.Convert(node.Arguments[0], typeof(object)));
         }
 
         if (node.Method.Name == "ToString" && !node.Method.IsStatic)
@@ -206,15 +190,10 @@ internal class SqlMethodSimplifier : ExpressionVisitor
             ?? throw new InvalidOperationException($"Failed to cast node {node}.");
     }
 
-    protected override Expression VisitUnary(UnaryExpression node)
-    {
-        var operand = Visit(node.Operand);
-
-        return base.VisitUnary(node.Update(operand));
-    }
-
     protected override Expression VisitNew(NewExpression node)
     {
+        if (!_methodStarted) return node;
+
         var convertedExp = Expression.Convert(node, typeof(object));
 
         var instantiator = Expression

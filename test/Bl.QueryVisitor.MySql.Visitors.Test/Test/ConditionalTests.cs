@@ -60,7 +60,7 @@ public class ConditionalTests
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Contains("`IsTrue` = @P1000", result.HavingSql);
+        Assert.Contains("`IsTrue` IS NULL", result.HavingSql);
     }
 
     [Fact]
@@ -75,7 +75,22 @@ public class ConditionalTests
 
         var result = visitor.Translate(query.Expression);
 
-        Assert.Contains("`IsTrueNullable` = @P1000", result.HavingSql);
+        Assert.Contains("`IsTrueNullable` IS NULL", result.HavingSql);
+    }
+
+    [Fact]
+    public void SimpleQueryTranslator_ShouldMatchNullableBoolWithStaticEquals()
+    {
+        bool? constNullableBool = null;
+        var query = Enumerable.Empty<FakeBooleanModel>()
+            .AsQueryable()
+            .Where(m => object.Equals(m.IsTrueNullable, constNullableBool));
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Contains("`IsTrueNullable` IS NULL", result.HavingSql);
     }
 
     [Fact]
