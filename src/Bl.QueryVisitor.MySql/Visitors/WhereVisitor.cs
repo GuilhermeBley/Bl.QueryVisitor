@@ -1,4 +1,5 @@
-﻿using Bl.QueryVisitor.MySql.Providers;
+﻿using Bl.QueryVisitor.MySql.BlExpressions;
+using Bl.QueryVisitor.MySql.Providers;
 using Bl.QueryVisitor.Visitors;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
@@ -29,16 +30,6 @@ internal class WhereVisitor
         Visit(expression);
 
         return _whereBuilder.ToString();
-    }
-    protected override Expression VisitMethodCall(MethodCallExpression node)
-    {
-        var methodVisitor = new MethodParamVisitor(_parameters, _columnNameProvider);
-
-        var sql = methodVisitor.TranslateMethod(node);
-
-        _whereBuilder.Append(sql);
-
-        return node;
     }
 
     protected override Expression VisitUnary(UnaryExpression u)
@@ -187,6 +178,17 @@ internal class WhereVisitor
         var res = instantiator();
 
         return Visit(Expression.Constant(res));
+    }
+
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SqlCommandExpression sqlCommandExpression)
+        {
+            _whereBuilder.Append(sqlCommandExpression.Command);
+            return node;
+        }
+
+        return base.VisitExtension(node);
     }
 
     protected override Expression VisitConstant(ConstantExpression c)
