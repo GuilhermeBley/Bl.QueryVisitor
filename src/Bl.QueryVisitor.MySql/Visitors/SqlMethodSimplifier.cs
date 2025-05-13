@@ -256,19 +256,13 @@ internal class SqlMethodSimplifier : ExpressionVisitor
         throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
     }
 
-    protected override Expression VisitExtension(Expression node)
-    {
-        if (node is SqlCommandExpression) return node;
-
-        return base.VisitExtension(node);
-    }
-
     private Expression? CreateSqlExpressionByCurrentBuilder(MethodCallExpression node)
     {
         var sql = _builder.ToString();
         _builder.Clear();
         if (string.IsNullOrWhiteSpace(sql))
             return null;
-        return VisitExtension(new SqlCommandExpression(sql, node));
+
+        return new SqlCommandExpression(sql, node);
     }
 }

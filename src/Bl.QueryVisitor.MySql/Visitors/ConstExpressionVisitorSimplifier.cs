@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Bl.QueryVisitor.MySql.BlExpressions;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
@@ -7,6 +8,16 @@ namespace Bl.QueryVisitor.MySql.Visitors;
 
 internal class ConstExpressionVisitorSimplifier : ExpressionVisitor
 {
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SqlCommandExpression sqlCommandExpression)
+        {
+            return node;
+        }
+
+        return base.VisitExtension(node);
+    }
+
     protected override Expression VisitMember(MemberExpression node)
     {
         // Try to evaluate member access on constants
