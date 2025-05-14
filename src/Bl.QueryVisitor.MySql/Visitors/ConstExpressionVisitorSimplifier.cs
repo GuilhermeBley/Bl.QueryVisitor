@@ -181,6 +181,9 @@ internal class ConstExpressionVisitorSimplifier : ExpressionVisitor
                 case InvocationExpression invocation:
                     return invocation.Type;
 
+                case ConstantExpression constexp:
+                    return constexp.Type;
+
                 default:
                     return expression.Type;
             }

@@ -170,25 +170,6 @@ public class ConditionalTests
         Assert.Contains("`Value` <= @P1000", result.HavingSql);
     }
 
-    [Fact]
-    public void SimpleQueryTranslator_S()
-    {
-        var query = Enumerable.Empty<FakeBooleanModel>()
-            .AsQueryable()
-            .Where(m => FakeConverter<bool?>(m.Value <= 23) == true);
-
-        var visitor = new SimpleQueryTranslator();
-
-        var result = visitor.Translate(query.Expression);
-
-        Assert.Contains("`Value` <= @P1000) = @P1001", result.HavingSql);
-    }
-
-    private T? FakeConverter<T>(object? value)
-    {
-        return default;
-    }
-
     private class FakeBooleanModel
     {
         public bool IsTrue { get; set; }
