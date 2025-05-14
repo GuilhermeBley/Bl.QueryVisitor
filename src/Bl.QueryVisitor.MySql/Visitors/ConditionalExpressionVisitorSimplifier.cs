@@ -21,15 +21,24 @@ internal class ConditionalExpressionVisitorSimplifier
         var left = Visit(node.Left);
         var right = Visit(node.Right);
 
-        if (node.NodeType == ExpressionType.AndAlso && left is ConstantExpression leftConst && leftConst.Value is bool)
+
+        if (left is ConstantExpression leftConst && leftConst.Value is bool leftBool && leftBool)
         {
-            return right;
+            if (node.NodeType == ExpressionType.AndAlso)
+            {
+                return Expression.Convert(right, typeof(bool));
+            }
         }
 
-        if (node.NodeType == ExpressionType.AndAlso && right is ConstantExpression rightConst && rightConst.Value is bool)
+
+        if (right is ConstantExpression rightConst && rightConst.Value is bool rightBool && rightBool)
         {
-            return left;
+            if (node.NodeType == ExpressionType.AndAlso)
+            {
+                return Expression.Convert(left, typeof(bool));
+            }
         }
+
 
         return Expression.MakeBinary(node.NodeType, left, right);
     }

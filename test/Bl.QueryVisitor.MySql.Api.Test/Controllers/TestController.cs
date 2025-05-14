@@ -32,7 +32,7 @@ public class TestController : ControllerBase
         var queryable =
             CreateConnection()
             .SqlAsQueryable<FakeModel>(new CommandDefinition(
-                "SELECT * FROM `queryable-test`.FakeModel"));
+                "SELECT *, null as Value FROM `queryable-test`.FakeModel a"));
         
         var result = options.ApplyTo(queryable);
         _logger.LogInformation(
@@ -89,6 +89,7 @@ public class TestController : ControllerBase
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public decimal? Value { get; set; }
         public DateOnly? InsertedAtOnlyDate { get; set; }
         public DateTime InsertedAt { get; set; }
     }

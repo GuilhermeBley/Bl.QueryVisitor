@@ -136,6 +136,21 @@ public class ConditionalTests
     }
 
     [Fact]
+    public void SimpleQueryTranslator_ShouldCheckBooleanNull()
+    {
+        bool? myBool = null;
+        var query = Enumerable.Empty<FakeBooleanModel>()
+            .AsQueryable()
+            .Where(m => (m.Value < 20) == myBool);
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Contains("(`Value` < @P1000) IS NULL", result.HavingSql);
+    }
+
+    [Fact]
     public void SimpleQueryTranslator_ShouldCompareUnaryExpWithPossibleNullableBooleans()
     {
         var other = new FakeBooleanModel()
@@ -153,6 +168,25 @@ public class ConditionalTests
 
         Assert.Equal(other.Value, result.Parameters.Values.FirstOrDefault());
         Assert.Contains("`Value` <= @P1000", result.HavingSql);
+    }
+
+    [Fact]
+    public void SimpleQueryTranslator_S()
+    {
+        var query = Enumerable.Empty<FakeBooleanModel>()
+            .AsQueryable()
+            .Where(m => FakeConverter<bool?>(m.Value <= 23) == true);
+
+        var visitor = new SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Contains("`Value` <= @P1000) = @P1001", result.HavingSql);
+    }
+
+    private T? FakeConverter<T>(object? value)
+    {
+        return default;
     }
 
     private class FakeBooleanModel

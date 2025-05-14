@@ -46,6 +46,9 @@ internal class WhereVisitor
             case ExpressionType.Quote:
                 this.Visit(u.Operand);
                 break;
+            case ExpressionType.TypeAs:
+                this.Visit(Expression.Convert(u.Operand, u.Type));
+                break;
             default:
                 throw new NotSupportedException(string.Format("The unary operator '{0}' is not supported", u.NodeType));
         }
@@ -207,6 +210,16 @@ internal class WhereVisitor
         _whereBuilder.Append(parameter);
 
         return c;
+    }
+
+    protected override Expression VisitMethodCall(MethodCallExpression node)
+    {
+        // dont visit the node.Object, doesn't metter for SQL purposes who has called the method
+
+        foreach (var arg in node.Arguments)
+            Visit(arg);
+
+        return node;
     }
 
     protected override Expression VisitMember(MemberExpression m)
