@@ -2,13 +2,32 @@
 
 namespace Bl.QueryVisitor.MySql;
 
-
+/// <summary>
+/// Add sql sections to specific places in the query.
+/// </summary>
+/// <remarks>
+/// MYSQL query commands contains these sections: SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY and LIMIT.
+/// </remarks>
 public enum CommandLocaleRegion
 {
     /// <summary>
-    /// Before selection.
+    /// Before selection (SELECT).
     /// </summary>
-    Header
+    /// <remarks>
+    ///     <b>Example: </b> {COMMAND_HERE}; SELECT * FROM `table` WHERE `column` = @P1000
+    /// </remarks>
+    Header,
+    /// <summary>
+    /// Before having clauses (HAVING).
+    /// </summary>
+    /// <remarks>
+    ///     <b>Example: </b> SELECT * FROM `table` WHERE `column` = @P1000 {COMMAND_HERE} HAVING ...
+    /// </remarks>
+    BeforeHavingSelection,
+
+    //
+    // After adding a new command, please update the 'ResultWriter' class in the method 'WriteCommandLocale'.
+    //
 }
 
 /// <summary>
