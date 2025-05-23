@@ -18,13 +18,15 @@ internal static class ResultWriter
 
         builder.Append(sql);
 
-        builder.Append(result.WhereSql);
+        WriteNextCommandCheckingDubleRowJump(builder, result.WhereSql);
 
-        builder.Append(result.HavingSql);
+        WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.BeforeHavingSelection);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.HavingSql);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.OrderBySql);
         
-        builder.Append(result.OrderBySql);
-        
-        builder.Append(result.LimitSql);
+        WriteNextCommandCheckingDubleRowJump(builder, result.LimitSql);
 
         if (result.Columns.Any())
             FormatWithAliases(result.Columns, builder);
@@ -88,9 +90,38 @@ internal static class ResultWriter
 
         foreach (var command in commands)
         {
-            builder.Append(command.SqlCommand);
-            builder.Append(';');
+            var commandNormalized = command.SqlCommand.Trim(';', ' ');
+
+            switch (region)
+            {
+                case CommandLocaleRegion.Header:
+                    builder.Append(commandNormalized);
+                    builder.Append(';');
+                    builder.Append('\n');
+                    break;
+                case CommandLocaleRegion.BeforeHavingSelection:
+                    builder.Append('\n');
+                    builder.Append(commandNormalized);
+                    builder.Append('\n');
+                    break;
+                default:
+                    throw new NotImplementedException($"Command local {region} is not suppoted.");
+            }
+
             builder.Append('\n');
         }
+    }
+
+    private static void WriteNextCommandCheckingDubleRowJump(StringBuilder builder, string command)
+    {
+        command = command?.Trim('\n') ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(command)) return;
+
+        var lastChar = builder.Length == 0 ? '\0' : builder[builder.Length - 1];
+        if (lastChar != '\n')
+        {
+            builder.Append('\n');
+        }
+        builder.Append(command);
     }
 }

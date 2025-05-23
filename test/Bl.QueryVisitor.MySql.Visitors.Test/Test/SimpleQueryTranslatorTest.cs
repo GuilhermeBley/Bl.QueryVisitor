@@ -500,7 +500,7 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
-    public void AddSql_CheckIfSqlWasAddded()
+    public void AddSql_CheckIfSqlWasAdddedHeader()
     {
         var query = FakeConnection.Default
             .SqlAsQueryable<FakeModel>(new CommandDefinition())
@@ -509,7 +509,50 @@ public class SimpleQueryTranslatorTest
 
         var result = query.ToSqlText();
 
-        Assert.Contains("SET NAMES = 'latin';", result, StringComparison.OrdinalIgnoreCase);
+        Assert.StartsWith("\nSET NAMES = 'latin';\n", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AddSql_ShouldMatchGroupBy()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("SELECT * FROM table1"))
+            .AsQueryable()
+            .AddSql(MySql.CommandLocaleRegion.BeforeHavingSelection, "GROUP BY p.Id");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT * FROM table1\nGROUP BY p.Id\n", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AddSql_ShouldMatchGroupByWithHaving()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("SELECT * FROM table1"))
+            .AsQueryable()
+            .Where(e => e.Id == 1)
+            .AddSql(MySql.CommandLocaleRegion.BeforeHavingSelection, "GROUP BY p.Id");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT * FROM table1\nGROUP BY p.Id\n\nHAVING (`Id` = @", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AddSql_ShouldMatchGroupByWithWhere()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("SELECT * FROM table1"))
+            .AsQueryable()
+            .SetColumnName(e => e.Id, "p.Id")
+            .EnsureAllColumnSet()
+            .Where(e => e.Id == 1)
+            .AddSql(MySql.CommandLocaleRegion.BeforeHavingSelection, "GROUP BY p.Id");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT * FROM table1\nWHERE (p.Id = @P1000)\nGROUP BY p.Id\n", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
