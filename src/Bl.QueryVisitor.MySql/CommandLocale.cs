@@ -24,6 +24,13 @@ public enum CommandLocaleRegion
     ///     <b>Example: </b> SELECT * FROM `table` WHERE `column` = @P1000 {COMMAND_HERE} HAVING ...
     /// </remarks>
     BeforeHavingSelection,
+    /// <summary>
+    /// Before columns and after the 'SELECT'. This command just work with feature 'EnsureAllColumnSet'.
+    /// </summary>
+    /// <remarks>
+    ///     <b>Example: </b> SELECT {COMMAND_HERE} * FROM `table` WHERE `column` = @P1000 HAVING ...
+    /// </remarks>
+    AfterSelection,
 
     //
     // After adding a new command, please update the 'ResultWriter' class in the method 'WriteCommandLocale'.

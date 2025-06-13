@@ -14,7 +14,12 @@ internal static class ResultWriter
 
         WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.Header);
 
-        builder.Append(result.SelectSql);
+        if (!string.IsNullOrEmpty(result.SelectSql))
+        {
+            builder.Append("SELECT ");
+            WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.AfterSelection);
+            builder.Append(result.SelectSql);
+        }
 
         builder.Append(sql);
 
@@ -29,7 +34,7 @@ internal static class ResultWriter
         WriteNextCommandCheckingDubleRowJump(builder, result.LimitSql);
 
         if (result.Columns.Any())
-            FormatWithAliases(result.Columns, builder);
+            FormatWithAliases(result, builder);
 
         builder.Append(';');
 
@@ -37,10 +42,12 @@ internal static class ResultWriter
     }
 
     private static StringBuilder FormatWithAliases(
-        IEnumerable<string> columns, 
+        SimpleQueryTranslatorResult result, 
         StringBuilder builder, 
         char nameSeparator = '`')
     {
+        var columns = result.Columns;
+
         var aliases = GetUniqueAliases(
             sql: builder.ToString(),
             aliases: "t",
@@ -52,7 +59,7 @@ internal static class ResultWriter
         builder.Insert(
             0,
             string.Concat(
-                "SELECT ", 
+                "SELECT ",
                 string.Join(", ", columns), // columns
                 " FROM ("));
 
@@ -90,7 +97,7 @@ internal static class ResultWriter
 
         foreach (var command in commands)
         {
-            var commandNormalized = command.SqlCommand.Trim(';', ' ');
+            var commandNormalized = command.SqlCommand.Trim(';', ' ', '\n', '\t');
 
             switch (region)
             {
@@ -101,6 +108,10 @@ internal static class ResultWriter
                     break;
                 case CommandLocaleRegion.BeforeHavingSelection:
                     builder.Append('\n');
+                    builder.Append(commandNormalized);
+                    builder.Append('\n');
+                    break;
+                case CommandLocaleRegion.AfterSelection:
                     builder.Append(commandNormalized);
                     builder.Append('\n');
                     break;
