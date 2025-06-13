@@ -257,7 +257,7 @@ public class SimpleQueryTranslator
                     string.Concat(_columnNameProvider.GetColumnName(col), " AS ", _columnNameProvider.TransformColumn(col)))
             );
         
-        return string.Concat('\n', "SELECT\n", selectSql, ' ');
+        return selectSql;
     }
 
     private string NormalizeLimit()

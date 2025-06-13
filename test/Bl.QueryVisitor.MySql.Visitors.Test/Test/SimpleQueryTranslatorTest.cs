@@ -556,6 +556,39 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
+    public void AddSql_ShouldMatchAfterSelect()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM table1"))
+            .AsQueryable()
+            .SetColumnName(e => e.Id, "p.Id")
+            .EnsureAllColumnSet()
+            .Where(e => e.Id == 1)
+            .Select(e => new { e.Id })
+            .AddSql(MySql.CommandLocaleRegion.AfterSelection, "SQL_NO_CACHE");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT SQL_NO_CACHE\n\np.Id", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AddSql_ShouldNotMatchAfterSelectBecauseOptionEnsureAllColumnSetIsntSet()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM table1"))
+            .AsQueryable()
+            .SetColumnName(e => e.Id, "p.Id")
+            .Where(e => e.Id == 1)
+            .Select(e => new { e.Id })
+            .AddSql(MySql.CommandLocaleRegion.AfterSelection, "SQL_NO_CACHE");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT `t0`.`Id` FROM", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void OrderBySql_ShouldPersistTheFirstValueIfDuplicated()
     {
         var query = FakeConnection.Default
