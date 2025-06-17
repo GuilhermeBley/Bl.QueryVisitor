@@ -21,6 +21,7 @@ internal static class ResultWriter
             builder.Append(result.SelectSql);
         }
 
+        builder.Append(' ');
         builder.Append(sql);
 
         WriteNextCommandCheckingDubleRowJump(builder, result.WhereSql);

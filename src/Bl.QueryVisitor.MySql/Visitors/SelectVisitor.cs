@@ -45,7 +45,7 @@ internal class SelectVisitor
 
     public object? TransformItem(object? input)
     {
-        if (_transformations.Count == 0)
+        if (!ShouldTranslate())
             return input;
 
         try
@@ -63,6 +63,11 @@ internal class SelectVisitor
         {
             throw;
         }
+    }
+
+    public bool ShouldTranslate()
+    {
+        return _transformations.Count != 0;
     }
 
     protected override Expression VisitLambda<T>(Expression<T> node)

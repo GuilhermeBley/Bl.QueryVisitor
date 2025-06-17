@@ -4,6 +4,7 @@ using Bl.QueryVisitor.Visitors;
 using Dapper;
 using System.Collections;
 using System.Data;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -200,10 +201,17 @@ internal class InternalQueryProvider
         Type entityType,
         IItemTranslator translator)
     {
+        using var timer = new InternalTimer();
         try
         {
             var entitiesCollection
                 = await ExecuteDapperQueryAsync(connection, commandDefinition, entityType);
+
+            if (translator.ShouldTranslate() == false)
+            {
+                // If no translation is needed, return the raw entities
+                return (T)entitiesCollection;
+            }
 
             var expectedType = typeof(T).GetGenericArguments()
                 .First(); // first type argument of the list
@@ -231,10 +239,17 @@ internal class InternalQueryProvider
         Type entityType,
         IItemTranslator translator)
     {
+        using var timer = new InternalTimer();
         try
         {
 
             var entitiesCollection = ExecuteDapperQuery(connection, commandDefinition, entityType);
+
+            if (translator.ShouldTranslate() == false)
+            {
+                // If no translation is needed, return the raw entities
+                return entitiesCollection;
+            }
 
             IList results = CreateList(entityType, entitiesCollection.Count());
             foreach (var item in entitiesCollection)
@@ -288,5 +303,19 @@ internal class InternalQueryProvider
         IList? list = (IList?)Activator.CreateInstance(listType, new object?[] { count });
 
         return list ?? throw new InvalidOperationException();
+    }
+
+    private class InternalTimer : IDisposable
+    {
+        private Stopwatch stopwatch = new Stopwatch();
+
+        public InternalTimer() => stopwatch.Start();
+
+        public void Dispose()
+        {
+            stopwatch.Stop();
+            TimeSpan elapsed = stopwatch.Elapsed;
+            Debug.WriteLine(message: $"Query executed in: {elapsed.TotalMilliseconds} ms", category: "Bl.QueryVisitor");
+        }
     }
 }
