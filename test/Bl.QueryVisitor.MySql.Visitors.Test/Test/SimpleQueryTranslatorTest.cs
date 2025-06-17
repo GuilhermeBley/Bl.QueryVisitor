@@ -426,7 +426,21 @@ public class SimpleQueryTranslatorTest
 
         var result = query.ToSqlText();
 
-        Assert.Contains("SELECT\nf.Id AS `Id`,\nIF(InsertedAt > 0, InsertedAt, NULL) Date AS `InsertedAt`,\nNULL AS `Name` FROM Users;", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SELECT f.Id AS `Id`,\nIF(InsertedAt > 0, InsertedAt, NULL) Date AS `InsertedAt`,\nNULL AS `Name` FROM Users;", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EnsureAllColumnSet_CheckRequiredSpaceBetweenSqlAndColumns()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM Users"))
+            .AsQueryable()
+            .EnsureAllColumnSet()
+            .SetColumnName(e => e.Name, "NULL");
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("NULL AS `Name` FROM", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
