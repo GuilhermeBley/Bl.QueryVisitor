@@ -213,10 +213,8 @@ internal class InternalQueryProvider
                 return (T)entitiesCollection;
             }
 
-            var expectedType = typeof(T).GetGenericArguments()
-                .First(); // first type argument of the list
-
-            IList results = CreateList(expectedType, entitiesCollection.Count());
+            var expectedType = typeof(T).GetGenericArguments().First(); // first type argument of the list
+            IList results = CreateList(expectedType, entitiesCollection.Count);
             foreach (var item in entitiesCollection)
             {
                 var translatedItem = translator.TransformItem(item);
@@ -251,7 +249,7 @@ internal class InternalQueryProvider
                 return entitiesCollection;
             }
 
-            IList results = CreateList(entityType, entitiesCollection.Count());
+            IList results = CreateList(entityType, entitiesCollection.Count);
             foreach (var item in entitiesCollection)
             {
                 results.Add(translator.TransformItem(item));
@@ -265,13 +263,37 @@ internal class InternalQueryProvider
         }
     }
 
-    private static Task<IEnumerable<object>> ExecuteDapperQueryAsync(
+    private static async Task<IList> ExecuteDapperQueryAsync(
         IDbConnection connection,
         CommandDefinition commandDefinition,
         Type entityType)
-        => connection.QueryAsync(entityType, commandDefinition);
+    {
+        try
+        {
+            // Get the Query method using reflection
+            MethodInfo queryAsyncMethod =
+                typeof(SqlMapper).GetMethod(nameof(Dapper.SqlMapper.QueryAsync), genericParameterCount: 1, new[] { typeof(IDbConnection), typeof(CommandDefinition) })?
+                    .MakeGenericMethod(entityType)
+                ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
 
-    private static IEnumerable<object> ExecuteDapperQuery(
+            var tsk = (Task?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
+                ?? throw new InvalidOperationException("Invalid 'TResult'.");
+
+            await tsk.ConfigureAwait(continueOnCapturedContext: false);
+
+            return (IList?)tsk.GetType().GetProperty("Result")?.GetValue(tsk) ?? throw new InvalidOperationException("Invalid 'TResult'.");
+        }
+        catch (AggregateException e)
+        {
+            throw e.InnerExceptions.First();
+        }
+        catch
+        {
+            throw;
+        }
+    }
+
+    private static IList ExecuteDapperQuery(
         IDbConnection connection,
         CommandDefinition commandDefinition,
         Type entityType)
@@ -284,7 +306,7 @@ internal class InternalQueryProvider
                     .MakeGenericMethod(entityType)
                 ?? throw new InvalidOperationException("Cannot find dapper method 'Query'.");
 
-            return (IEnumerable<object>?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
+            return (IList?)queryAsyncMethod.Invoke(null, new object[] { connection, commandDefinition })
                 ?? throw new InvalidOperationException("Invalid 'TResult'.");
         }
         catch (AggregateException e)

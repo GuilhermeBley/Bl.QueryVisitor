@@ -83,7 +83,10 @@ public class TestController : ControllerBase
     }
 
     private MySqlConnection CreateConnection()
-        => new MySqlConnection(_options.Value.ConnectionString);
+    {
+        var conn = new MySqlConnection(_options.Value.ConnectionString);
+        return conn;
+    }
 
     public class FakeModel
     {
