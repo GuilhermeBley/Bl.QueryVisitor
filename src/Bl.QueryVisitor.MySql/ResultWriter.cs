@@ -42,6 +42,45 @@ internal static class ResultWriter
         return builder.ToString();
     }
 
+    public static string WriteCountSql(string? sql, SimpleQueryTranslatorResult result)
+    {
+        var builder = new StringBuilder();
+
+        var areColumnsMapped = !string.IsNullOrEmpty(result.SelectSql);
+
+        if (!areColumnsMapped)
+        {
+            throw new ArgumentException("The columns are not mapped, so you can't use COUNT commands. " +
+                "To use it, map all the columns names with `EnsureAllColumnSet`.");
+        }
+
+        sql = sql?.Trim(' ', '\n', ';') ?? string.Empty;
+
+        WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.Header);
+
+        builder.Append("SELECT COUNT(*) ");
+
+        builder.Append(' ');
+        builder.Append(sql);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.WhereSql);
+
+        WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.BeforeHavingSelection);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.HavingSql);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.OrderBySql);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.LimitSql);
+
+        if (result.Columns.Any())
+            FormatWithAliases(result, builder);
+
+        builder.Append(';');
+
+        return builder.ToString();
+    }
+
     private static StringBuilder FormatWithAliases(
         SimpleQueryTranslatorResult result, 
         StringBuilder builder, 

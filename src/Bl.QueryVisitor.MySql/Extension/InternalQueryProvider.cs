@@ -154,6 +154,38 @@ internal class InternalQueryProvider
             translator.ItemTranslator);
     }
 
+    public Task<long> LongCountExecuteAsync(Expression expression, CancellationToken cancellationToken = default)
+    {
+        var translator = ((IFromSqlQueryProvider)this).GenerateTranslator();
+
+        var result = translator.Translate(expression);
+
+        var completeSql = ResultWriter.WriteCountSql(_commandDefinition.CommandText, result);
+
+        var dbArgs = new DynamicParameters();
+
+        foreach (var parameter in result.Parameters)
+            dbArgs.Add(parameter.Key, parameter.Value);
+
+        dbArgs.AddDynamicParams(_commandDefinition.Parameters);
+
+        CancellationTokenSource cts =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _commandDefinition.CancellationToken);
+
+        var newCommand =
+            new CommandDefinition(
+                commandText: completeSql,
+                parameters: dbArgs,
+                transaction: _commandDefinition.Transaction,
+                commandTimeout: _commandDefinition.CommandTimeout,
+                commandType: _commandDefinition.CommandType,
+                flags: _commandDefinition.Flags,
+                cancellationToken: cts.Token);
+
+        return _dbConnection
+            .QueryFirstAsync<long>(newCommand);
+    }
+
     SimpleQueryTranslator IFromSqlQueryProvider.GenerateTranslator()
     {
         return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped, _additionalCommands);
