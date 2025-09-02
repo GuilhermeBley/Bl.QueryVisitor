@@ -1,5 +1,6 @@
 using Bl.QueryVisitor.Extension;
 using Bl.QueryVisitor.MySql.Api.Test.Controllers;
+using Bl.QueryVisitor.MySql.Extension;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
@@ -40,6 +41,29 @@ public class TestController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("ColumnName/$count")]
+    public async Task<ActionResult<long>> GetWithColumnNameCount(
+        [FromServices] ODataQueryOptions<FakeModel> options,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable queryable =
+            CreateConnection()
+            .SqlAsQueryable<FakeModel>(new CommandDefinition(
+                "FROM `queryable-test`.FakeModel a"))
+            .SetColumnName(e => e.Id, "a.Id")
+            .SetColumnName(e => e.InsertedAt, "a.InsertedAt")
+            .SetColumnName(e => e.InsertedAtOnlyDate, "a.InsertedAtOnlyDate")
+            .SetColumnName(e => e.Name, "a.Name")
+            .SetColumnName(e => e.Value, "a.Value")
+            .EnsureAllColumnSet();
+
+        if (options.Filter != null)
+            queryable = options.Filter.ApplyTo(queryable, new ODataQuerySettings());
+
+        var count = await queryable.SqlLongCountAsync(cancellationToken);
+        return Ok(count);
+    }
+
     [HttpGet("ColumnName")]
     [EnableQuery]
     public async Task<ActionResult<IQueryable<FakeModel>>> GetWithColumnName(
@@ -53,11 +77,14 @@ public class TestController : ControllerBase
             .SetColumnName(e => e.InsertedAt, "a.InsertedAt")
             .SetColumnName(e => e.InsertedAtOnlyDate, "a.InsertedAtOnlyDate")
             .SetColumnName(e => e.Name, "a.Name")
+            .SetColumnName(e => e.Value, "a.Value")
             .EnsureAllColumnSet();
 
-        var exp = new ODataExpressionVisitorSimplifier().Visit(options.ApplyTo(queryable).Expression);
+        var exp = options.ApplyTo(queryable).Expression;
 
         var sql = options.ApplyTo(queryable).ToSqlText();
+        var exptxt = exp.ToString();
+        _logger.LogInformation(exptxt);
         _logger.LogInformation(sql);
 
         await Task.CompletedTask;

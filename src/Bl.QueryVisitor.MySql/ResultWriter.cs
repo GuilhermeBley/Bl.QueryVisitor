@@ -1,5 +1,6 @@
 ﻿using Bl.QueryVisitor.MySql;
 using Bl.QueryVisitor.Visitors;
+using System.Diagnostics;
 using System.Text;
 
 namespace Bl.QueryVisitor;
@@ -39,7 +40,50 @@ internal static class ResultWriter
 
         builder.Append(';');
 
-        return builder.ToString();
+        var sqlResult = builder.ToString();
+
+        Debug.WriteLine($"------Query executed in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
+
+        return sqlResult;
+    }
+
+    public static string WriteCountSql(string? sql, SimpleQueryTranslatorResult result)
+    {
+        var builder = new StringBuilder();
+
+        var areColumnsMapped = !string.IsNullOrEmpty(result.SelectSql);
+
+        if (!areColumnsMapped)
+        {
+            throw new ArgumentException("The columns are not mapped, so you can't use COUNT commands. " +
+                "To use it, map all the columns names with `EnsureAllColumnSet`.");
+        }
+
+        sql = sql?.Trim(' ', '\n', ';') ?? string.Empty;
+
+        WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.Header);
+
+        builder.Append("SELECT COUNT(*) ");
+
+        builder.Append(' ');
+        builder.Append(sql);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.WhereSql);
+
+        WriteCommandLocale(builder, result.AdditionalCommands, CommandLocaleRegion.BeforeHavingSelection);
+
+        WriteNextCommandCheckingDubleRowJump(builder, result.HavingSql);
+
+        if (result.Columns.Any())
+            FormatWithAliases(result, builder);
+
+        builder.Append(';');
+
+        var sqlResult = builder.ToString();
+
+        Debug.WriteLine($"------Query executed in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
+        
+        return sqlResult;
     }
 
     private static StringBuilder FormatWithAliases(
