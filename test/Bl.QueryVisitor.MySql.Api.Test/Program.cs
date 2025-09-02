@@ -12,7 +12,7 @@ builder.Services
     .AddControllers()
     .AddOData(cfg =>
     {
-        cfg.Select().OrderBy().Filter().SetMaxTop(1000);
+        cfg.Select().OrderBy().Filter().SetMaxTop(1000).Count().Expand();
     });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

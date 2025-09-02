@@ -1,5 +1,6 @@
 using Bl.QueryVisitor.Extension;
 using Bl.QueryVisitor.MySql.Api.Test.Controllers;
+using Bl.QueryVisitor.MySql.Api.Test.Filter;
 using Bl.QueryVisitor.MySql.Extension;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +40,24 @@ public class TestController : ControllerBase
         _logger.LogInformation(
             result.ToSqlText());
         return Ok(result);
+    }
+
+    [HttpGet("ColumnName-2")]
+    [ODataCountableFilter]
+    public async Task<ActionResult<IQueryable<FakeModel>>> GetWithColumnNamev2(
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable queryable =
+            CreateConnection()
+            .SqlAsQueryable<FakeModel>(new CommandDefinition(
+                "FROM `queryable-test`.FakeModel a"))
+            .SetColumnName(e => e.Id, "a.Id")
+            .SetColumnName(e => e.InsertedAt, "a.InsertedAt")
+            .SetColumnName(e => e.InsertedAtOnlyDate, "a.InsertedAtOnlyDate")
+            .SetColumnName(e => e.Name, "a.Name")
+            .SetColumnName(e => e.Value, "a.Value")
+            .EnsureAllColumnSet();
+        return Ok(queryable);
     }
 
     [HttpGet("ColumnName/$count")]
@@ -120,7 +139,7 @@ public class TestController : ControllerBase
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public decimal? Value { get; set; }
-        public DateOnly? InsertedAtOnlyDate { get; set; }
+        public DateTime? InsertedAtOnlyDate { get; set; }
         public DateTime InsertedAt { get; set; }
     }
 }
