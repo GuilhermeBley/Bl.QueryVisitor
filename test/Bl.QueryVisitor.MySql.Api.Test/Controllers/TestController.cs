@@ -54,6 +54,7 @@ public class TestController : ControllerBase
             .SetColumnName(e => e.InsertedAt, "a.InsertedAt")
             .SetColumnName(e => e.InsertedAtOnlyDate, "a.InsertedAtOnlyDate")
             .SetColumnName(e => e.Name, "a.Name")
+            .SetColumnName(e => e.Value, "a.Value")
             .EnsureAllColumnSet();
 
         if (options.Filter != null)
@@ -76,6 +77,7 @@ public class TestController : ControllerBase
             .SetColumnName(e => e.InsertedAt, "a.InsertedAt")
             .SetColumnName(e => e.InsertedAtOnlyDate, "a.InsertedAtOnlyDate")
             .SetColumnName(e => e.Name, "a.Name")
+            .SetColumnName(e => e.Value, "a.Value")
             .EnsureAllColumnSet();
 
         var exp = options.ApplyTo(queryable).Expression;

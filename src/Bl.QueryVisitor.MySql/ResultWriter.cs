@@ -1,5 +1,6 @@
 ﻿using Bl.QueryVisitor.MySql;
 using Bl.QueryVisitor.Visitors;
+using System.Diagnostics;
 using System.Text;
 
 namespace Bl.QueryVisitor;
@@ -39,7 +40,11 @@ internal static class ResultWriter
 
         builder.Append(';');
 
-        return builder.ToString();
+        var sqlResult = builder.ToString();
+
+        Debug.WriteLine($"------Query executed in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
+
+        return sqlResult;
     }
 
     public static string WriteCountSql(string? sql, SimpleQueryTranslatorResult result)
@@ -69,16 +74,16 @@ internal static class ResultWriter
 
         WriteNextCommandCheckingDubleRowJump(builder, result.HavingSql);
 
-        WriteNextCommandCheckingDubleRowJump(builder, result.OrderBySql);
-
-        WriteNextCommandCheckingDubleRowJump(builder, result.LimitSql);
-
         if (result.Columns.Any())
             FormatWithAliases(result, builder);
 
         builder.Append(';');
 
-        return builder.ToString();
+        var sqlResult = builder.ToString();
+
+        Debug.WriteLine($"------Query executed in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
+        
+        return sqlResult;
     }
 
     private static StringBuilder FormatWithAliases(

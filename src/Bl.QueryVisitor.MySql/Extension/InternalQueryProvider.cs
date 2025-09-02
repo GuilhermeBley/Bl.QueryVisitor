@@ -182,8 +182,10 @@ internal class InternalQueryProvider
                 flags: _commandDefinition.Flags,
                 cancellationToken: cts.Token);
 
-        return _dbConnection
-            .QueryFirstAsync<long>(newCommand);
+        var task = InternalTimer.ExecuteWithTimerAsync(
+            () => _dbConnection.QueryFirstAsync<long>(newCommand),
+            "LongCountExecuteAsync");
+        return task;
     }
 
     SimpleQueryTranslator IFromSqlQueryProvider.GenerateTranslator()
@@ -233,11 +235,11 @@ internal class InternalQueryProvider
         Type entityType,
         IItemTranslator translator)
     {
-        using var timer = new InternalTimer();
         try
         {
-            var entitiesCollection
-                = await ExecuteDapperQueryAsync(connection, commandDefinition, entityType);
+            var entitiesCollection = await InternalTimer.ExecuteWithTimerAsync( 
+                () => ExecuteDapperQueryAsync(connection, commandDefinition, entityType),
+                "ExecuteDapperQueryAsync");
 
             if (translator.ShouldTranslate() == false)
             {
@@ -245,6 +247,7 @@ internal class InternalQueryProvider
                 return (T)entitiesCollection;
             }
 
+            using var timer = new InternalTimer("TransformItem");
             var expectedType = typeof(T).GetGenericArguments().First(); // first type argument of the list
             IList results = CreateList(expectedType, entitiesCollection.Count);
             foreach (var item in entitiesCollection)
@@ -269,11 +272,12 @@ internal class InternalQueryProvider
         Type entityType,
         IItemTranslator translator)
     {
-        using var timer = new InternalTimer();
         try
         {
 
-            var entitiesCollection = ExecuteDapperQuery(connection, commandDefinition, entityType);
+            var entitiesCollection = InternalTimer.ExecuteWithTimer(
+                () => ExecuteDapperQuery(connection, commandDefinition, entityType),
+                "ExecuteDapperQuery");
 
             if (translator.ShouldTranslate() == false)
             {
@@ -281,6 +285,7 @@ internal class InternalQueryProvider
                 return entitiesCollection;
             }
 
+            using var timer = new InternalTimer("TransformItem");
             IList results = CreateList(entityType, entitiesCollection.Count);
             foreach (var item in entitiesCollection)
             {
@@ -362,14 +367,50 @@ internal class InternalQueryProvider
     private class InternalTimer : IDisposable
     {
         private Stopwatch stopwatch = new Stopwatch();
+        private string _area = "";
 
-        public InternalTimer() => stopwatch.Start();
+        public InternalTimer() : this("") { }
+        public InternalTimer(string area)
+        {
+            stopwatch.Start();
+            _area = area;
+        }
 
         public void Dispose()
         {
             stopwatch.Stop();
             TimeSpan elapsed = stopwatch.Elapsed;
-            Debug.WriteLine(message: $"Query executed in: {elapsed.TotalMilliseconds} ms", category: "Bl.QueryVisitor");
+
+            if (string.IsNullOrEmpty(_area))
+                Debug.WriteLine(message: $"Query executed in: {elapsed.TotalMilliseconds} ms", category: "Bl.QueryVisitor");
+            else
+                Debug.WriteLine(message: $"Query executed in: {elapsed.TotalMilliseconds} ms", category: "Bl.QueryVisitor." + _area);
+        }
+
+        public static async Task<T> ExecuteWithTimerAsync<T>(Func<Task<T>> func, string area = "")
+        {
+            using var timer = new InternalTimer(area);
+            try
+            {
+                return await func();
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public static T ExecuteWithTimer<T>(Func<T> func, string area = "")
+        {
+            using var timer = new InternalTimer(area);
+            try
+            {
+                return func();
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }
