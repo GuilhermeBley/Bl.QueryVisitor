@@ -42,7 +42,7 @@ internal static class ResultWriter
 
         var sqlResult = builder.ToString();
 
-        Debug.WriteLine($"------Query executed in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
+        Debug.WriteLine($"------Query created in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
 
         return sqlResult;
     }
@@ -55,8 +55,15 @@ internal static class ResultWriter
 
         if (!areColumnsMapped)
         {
-            throw new ArgumentException("The columns are not mapped, so you can't use COUNT commands. " +
-                "To use it, map all the columns names with `EnsureAllColumnSet`.");
+            var completeSql = WriteSql(sql, result);
+
+            completeSql = completeSql.Trim(' ', '\n', ';');
+
+            completeSql = $"SELECT COUNT(*) FROM ({completeSql}) AS `tWriteCountSql0`;";
+            
+            Debug.WriteLine($"------Query created in Bl.QueryVisitor.ResultWriter:\n{completeSql}\n------");
+
+            return completeSql;
         }
 
         sql = sql?.Trim(' ', '\n', ';') ?? string.Empty;
@@ -81,7 +88,7 @@ internal static class ResultWriter
 
         var sqlResult = builder.ToString();
 
-        Debug.WriteLine($"------Query executed in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
+        Debug.WriteLine($"------Query created in Bl.QueryVisitor.ResultWriter:\n{sqlResult}\n------");
         
         return sqlResult;
     }
