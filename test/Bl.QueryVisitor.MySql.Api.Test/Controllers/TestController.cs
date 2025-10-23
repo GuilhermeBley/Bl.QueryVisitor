@@ -42,9 +42,22 @@ public class TestController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("/count/no-ensure-all-column-set")]
+    [ODataCountableFilter(EnsureStableOrdering = false)]
+    public ActionResult<IQueryable<FakeModel>> GetCountWithNoEnsureAllColumnSetAsync(
+        [FromServices] ODataQueryOptions<FakeModel> options)
+    {
+        var queryable =
+            CreateConnection()
+            .SqlAsQueryable<FakeModel>(new CommandDefinition(
+                "SELECT * FROM `queryable-test`.FakeModel a"));
+
+        return Ok(queryable);
+    }
+
     [HttpGet("ColumnName-2")]
     [ODataCountableFilter]
-    public async Task<ActionResult<IQueryable<FakeModel>>> GetWithColumnNamev2(
+    public ActionResult<IQueryable<FakeModel>> GetWithColumnNamev2(
         CancellationToken cancellationToken = default)
     {
         IQueryable queryable =
