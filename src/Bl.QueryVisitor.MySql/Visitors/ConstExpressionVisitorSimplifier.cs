@@ -46,6 +46,11 @@ internal class ConstExpressionVisitorSimplifier : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
+        if (node.Method.Module.Name.StartsWith("System.Linq", StringComparison.OrdinalIgnoreCase))
+        {
+            return base.VisitMethodCall(node);
+        }
+
         // Try to evaluate method calls on constants
         var obj = node.Object != null ? Visit(node.Object) : null;
         var args = node.Arguments.Select(Visit).ToArray();

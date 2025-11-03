@@ -259,6 +259,21 @@ public class SimpleQueryTranslatorTest
     {
         var query = Enumerable.Empty<FakeModel>()
             .AsQueryable()
+            .Take(1)
+            .Skip(1);
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nLIMIT 1 OFFSET 1", result.LimitSql);
+    }
+
+    [Fact]
+    public void Translate_CheckLimitOffsetText_SuccessLimitFoundWithConditions()
+    {
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
             .Where(model => model.Id == 1)
             .Take(1)
             .Skip(1);

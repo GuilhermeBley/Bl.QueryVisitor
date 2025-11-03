@@ -1,12 +1,21 @@
 using Bl.QueryVisitor.Extension;
+using Bl.QueryVisitor.MySql.Test.TestBase;
 using MySql.Data.MySqlClient;
 using System.Collections.Generic;
 using System.Data;
 
 namespace Bl.QueryVisitor.MySql.Test.Test;
 
+[Collection(InfrastructureTestFixtureCollection.CollectionName)]
 public class FromSqlQueryableTest
 {
+    private readonly InfrastructureTestFixture _fixture;
+
+    public FromSqlQueryableTest(InfrastructureTestFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public void Execute_TryExecuteWhereWithProvider_Success()
     {
@@ -211,8 +220,8 @@ public class FromSqlQueryableTest
         Assert.DoesNotContain(NAME_COLUMN, sqlText);
     }
 
-    private static IDbConnection CreateConnection()
+    private IDbConnection CreateConnection()
     {
-        return new MySqlConnection("server=127.0.0.1;port=3310;user id=root;password=root;persistsecurityinfo=True;database=queryable-test;default command timeout=600;SslMode=None");
+        return new MySqlConnection(_fixture.MySqlConnectionString);
     }
 }

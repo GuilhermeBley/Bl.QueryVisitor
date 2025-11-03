@@ -84,11 +84,11 @@ public class SimpleQueryTranslator
         _skip = null;
         _take = null;
 
-        expression = new SqlMethodSimplifier(_parameters, _columnNameProvider).Visit(expression);
-        expression = new ConstExpressionVisitorSimplifier().Visit(expression);
-        expression = new ConditionalExpressionVisitorSimplifier().Visit(expression);
+        var methodSimplExpression = new SqlMethodSimplifier(_parameters, _columnNameProvider).Visit(expression);
+        var constExpression = new ConstExpressionVisitorSimplifier().Visit(methodSimplExpression);
+        var condiExpression = new ConditionalExpressionVisitorSimplifier().Visit(constExpression);
 
-        var orderResult = new OrderByExpressionVisitor(_columnNameProvider, genericListType[0]).Translate(expression);
+        var orderResult = new OrderByExpressionVisitor(_columnNameProvider, genericListType[0]).Translate(condiExpression);
 
         this.Visit(orderResult.Others);
 
