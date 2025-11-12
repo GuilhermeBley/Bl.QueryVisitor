@@ -311,4 +311,36 @@ public class MethodParamVisitorTest
         
         Assert.Equal("\nHAVING (`Name` >= @P1000)", result.HavingSql);
     }
+
+    [Fact]
+    public void StartsWith_ShoulSqlMapToLike()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Name.StartsWith("ola"));
+
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+
+        Assert.Equal("\nHAVING (`Name` LIKE CONCAT(@P1000,'%'))", result.HavingSql);
+    }
+
+    [Fact]
+    public void EndsWith_ShoulSqlMapToLike()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Name.EndsWith("ola"));
+        
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+        
+        Assert.Equal("\nHAVING (`Name` LIKE CONCAT('%',@P1000))", result.HavingSql);
+    }
 }

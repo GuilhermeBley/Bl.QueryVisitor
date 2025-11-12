@@ -181,6 +181,25 @@ internal class SqlMethodSimplifier : ExpressionVisitor
                 ?? throw new InvalidOperationException($"Failed to cast node {node}.");
         }
 
+        if (node.Method.Name == "EndsWith")
+        {
+            _methodStarted = true;
+            _builder.Append('(');
+
+            base.Visit(node.Object);
+
+            _builder.Append(" LIKE ");
+
+            _builder.Append("CONCAT('%',");
+            base.Visit(node.Arguments[0]);
+            _builder.Append(")");
+
+            _builder.Append(')');
+
+            return CreateSqlExpressionByCurrentBuilder(node)
+                ?? throw new InvalidOperationException($"Failed to cast node {node}.");
+        }
+
         if (!SqlStaticMethodsTranslator.TryTranslate(node, out var sqlMethod))
             return base.VisitMethodCall(node); // continue...
 
