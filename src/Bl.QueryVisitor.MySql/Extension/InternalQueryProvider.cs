@@ -190,7 +190,10 @@ internal class InternalQueryProvider
 
     SimpleQueryTranslator IFromSqlQueryProvider.GenerateTranslator()
     {
-        return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped, _additionalCommands);
+        return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped, _additionalCommands)
+        {
+            ModelType = _model,
+        };
     }
 
     /// <summary>

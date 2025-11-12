@@ -34,6 +34,7 @@ public class SimpleQueryTranslator
     private readonly ColumnNameProvider _columnNameProvider;
     private readonly IEnumerable<CommandLocale> _addionalCommands;
 
+    public Type? ModelType { get; set; }
     public IItemTranslator ItemTranslator => _selectVisitor;
     public IReadOnlyDictionary<string, object?> Parameters => _parameters;
 
@@ -54,10 +55,10 @@ public class SimpleQueryTranslator
     }
 
     public SimpleQueryTranslator(IReadOnlyDictionary<string, string> renamedPropertiesDictionary, bool ensureAllColumnsMapped)
-        : this(renamedPropertiesDictionary,  ensureAllColumnsMapped, Enumerable.Empty<CommandLocale>()) { }
+        : this(renamedPropertiesDictionary, ensureAllColumnsMapped, Enumerable.Empty<CommandLocale>()) { }
 
     public SimpleQueryTranslator(
-        IReadOnlyDictionary<string, string> renamedPropertiesDictionary, 
+        IReadOnlyDictionary<string, string> renamedPropertiesDictionary,
         bool ensureAllColumnsMapped,
         IEnumerable<CommandLocale> AddionalCommands)
     {
@@ -69,17 +70,23 @@ public class SimpleQueryTranslator
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
     {
-        var genericListType = 
-            expression is MethodCallExpression methodCallExpression
-            ? methodCallExpression.Arguments.FirstOrDefault()?.Type.GetGenericArguments() ?? Array.Empty<Type>()
-            : expression.Type.GetGenericArguments();
-        if (genericListType.Length != 1)
+        var modelType = ModelType;
+        if (modelType is null)
         {
-            throw new ArgumentException("It's just supported Enumerable with a single generic argument.");
+            var genericListType =
+                expression is MethodCallExpression methodCallExpression
+                ? methodCallExpression.Arguments.FirstOrDefault()?.Type.GetGenericArguments() ?? Array.Empty<Type>()
+                : expression.Type.GetGenericArguments();
+            if (genericListType.Length != 1)
+            {
+                throw new ArgumentException("It's just supported Enumerable with a single generic argument.");
+            }
+
+            modelType = genericListType[0];
         }
 
         _whereBuilder.Clear();
-        _selectVisitor = new(genericListType[0]);
+        _selectVisitor = new(modelType);
         _parameters.Clear();
         _skip = null;
         _take = null;
@@ -88,7 +95,7 @@ public class SimpleQueryTranslator
         var constExpression = new ConstExpressionVisitorSimplifier().Visit(methodSimplExpression);
         var condiExpression = new ConditionalExpressionVisitorSimplifier().Visit(constExpression);
 
-        var orderResult = new OrderByExpressionVisitor(_columnNameProvider, genericListType[0]).Translate(condiExpression);
+        var orderResult = new OrderByExpressionVisitor(_columnNameProvider, modelType).Translate(condiExpression);
 
         this.Visit(orderResult.Others);
 
@@ -256,7 +263,7 @@ public class SimpleQueryTranslator
                 columnsMapped.OrderBy(e => e).Select(col =>
                     string.Concat(_columnNameProvider.GetColumnName(col), " AS ", _columnNameProvider.TransformColumn(col)))
             );
-        
+
         return selectSql;
     }
 

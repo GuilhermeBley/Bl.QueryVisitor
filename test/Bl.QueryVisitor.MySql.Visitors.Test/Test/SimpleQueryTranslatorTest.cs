@@ -512,6 +512,21 @@ public class SimpleQueryTranslatorTest
     }
 
     [Fact]
+    public void EnsureAllColumnSet_CheckIfSelectFilterJustOneSqlColumn()
+    {
+        var query = FakeConnection.Default
+            .SqlAsQueryable<FakeModel>(new CommandDefinition("FROM User"))
+            .AsQueryable()
+            .EnsureAllColumnSet()
+            .SetColumnName(e => e.Id, "f.Id")
+            .Select(e => new { e.Id });
+
+        var result = query.ToSqlText();
+
+        Assert.Contains("SELECT f.Id AS `Id` FROM", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void EnsureAllColumnSet_CheckIfWhereAddedSpecificColumn()
     {
         var query = FakeConnection.Default
