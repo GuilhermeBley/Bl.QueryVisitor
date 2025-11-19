@@ -23,6 +23,11 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
+        if (_methodStarted)
+        {
+            return base.VisitMethodCall(node);
+        }
+
         if (node.Method.Name == "Equals" && node.Method.IsStatic && node.Arguments.Count == 2)
         {
             return Expression.Equal(
