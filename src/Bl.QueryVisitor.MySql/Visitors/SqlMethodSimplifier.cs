@@ -200,6 +200,30 @@ internal class SqlMethodSimplifier : ExpressionVisitor
                 ?? throw new InvalidOperationException($"Failed to cast node {node}.");
         }
 
+        if (node.Object is MemberExpression
+            && node.Method.Name == "ToUpper" 
+            && node.Arguments.Count == 0) // Visit $it.Column.ToUpper()
+        {
+            _methodStarted = true;
+            _builder.Append("UPPER(");
+            base.Visit(node.Object);
+            _builder.Append(')');
+            return CreateSqlExpressionByCurrentBuilder(node)
+                ?? throw new InvalidOperationException($"Failed to cast node {node}.");
+        }
+
+        if (node.Object is MemberExpression
+            && node.Method.Name == "ToLower" 
+            && node.Arguments.Count == 0) // Visit $it.Column.ToUpper()
+        {
+            _methodStarted = true;
+            _builder.Append("LOWER(");
+            base.Visit(node.Object);
+            _builder.Append(')');
+            return CreateSqlExpressionByCurrentBuilder(node)
+                ?? throw new InvalidOperationException($"Failed to cast node {node}.");
+        }
+
         if (!SqlStaticMethodsTranslator.TryTranslate(node, out var sqlMethod))
             return base.VisitMethodCall(node); // continue...
 
