@@ -23,6 +23,11 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
     protected override Expression VisitMethodCall(MethodCallExpression node)
     {
+        if (_methodStarted)
+        {
+            return base.VisitMethodCall(node);
+        }
+
         if (node.Method.Name == "Equals" && node.Method.IsStatic && node.Arguments.Count == 2)
         {
             return Expression.Equal(
@@ -196,6 +201,30 @@ internal class SqlMethodSimplifier : ExpressionVisitor
 
             _builder.Append(')');
 
+            return CreateSqlExpressionByCurrentBuilder(node)
+                ?? throw new InvalidOperationException($"Failed to cast node {node}.");
+        }
+
+        if (node.Object is MemberExpression
+            && node.Method.Name == "ToUpper" 
+            && node.Arguments.Count == 0) // Visit $it.Column.ToUpper()
+        {
+            _methodStarted = true;
+            _builder.Append("UPPER(");
+            base.Visit(node.Object);
+            _builder.Append(')');
+            return CreateSqlExpressionByCurrentBuilder(node)
+                ?? throw new InvalidOperationException($"Failed to cast node {node}.");
+        }
+
+        if (node.Object is MemberExpression
+            && node.Method.Name == "ToLower" 
+            && node.Arguments.Count == 0) // Visit $it.Column.ToUpper()
+        {
+            _methodStarted = true;
+            _builder.Append("LOWER(");
+            base.Visit(node.Object);
+            _builder.Append(')');
             return CreateSqlExpressionByCurrentBuilder(node)
                 ?? throw new InvalidOperationException($"Failed to cast node {node}.");
         }

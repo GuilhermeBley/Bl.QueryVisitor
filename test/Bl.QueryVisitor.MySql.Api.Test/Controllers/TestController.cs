@@ -150,7 +150,7 @@ public class TestController : ControllerBase
     public class FakeModel
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string? Name { get; set; } = string.Empty;
         public decimal? Value { get; set; }
         public DateTime? InsertedAtOnlyDate { get; set; }
         public DateTime InsertedAt { get; set; }

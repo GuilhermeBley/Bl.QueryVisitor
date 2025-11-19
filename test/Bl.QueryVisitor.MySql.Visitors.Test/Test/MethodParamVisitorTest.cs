@@ -343,4 +343,36 @@ public class MethodParamVisitorTest
         
         Assert.Equal("\nHAVING (`Name` LIKE CONCAT('%',@P1000))", result.HavingSql);
     }
+
+    [Fact]
+    public void ToUpper_ShoulSqlMapToUpper()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Name.ToUpper() == "ABC");
+        
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+        
+        Assert.Equal("\nHAVING (UPPER(`Name`) = @P1000)", result.HavingSql);
+    }
+
+    [Fact]
+    public void ToLower_ShoulSqlMapToLower()
+    {
+        var valuesMatch = new[] { 1, 2, 3 };
+
+        var query = Enumerable.Empty<FakeModel>()
+            .AsQueryable()
+            .Where(model => model.Name.ToLower() == "ABC");
+        
+        var visitor = new Visitors.SimpleQueryTranslator();
+
+        var result = visitor.Translate(query.Expression);
+        
+        Assert.Equal("\nHAVING (LOWER(`Name`) = @P1000)", result.HavingSql);
+    }
 }
