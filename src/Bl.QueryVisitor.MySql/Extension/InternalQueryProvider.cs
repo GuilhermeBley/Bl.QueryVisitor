@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Config;
 using Bl.QueryVisitor.MySql.Exceptions;
 using Bl.QueryVisitor.Visitors;
 using Dapper;
@@ -11,32 +12,21 @@ using System.Reflection;
 namespace Bl.QueryVisitor.Extension;
 
 internal class InternalQueryProvider
-    : IFromSqlQueryProvider
+    : IFromSqlQueryProvider,
+    IQueryContextProvider
 {
     private readonly IDbConnection _dbConnection;
     private readonly CommandDefinition _commandDefinition;
-    private readonly Type _model;
-    /// <summary>
-    /// These items are used to replace the 'Property.Name', because it can improve by using index 
-    /// </summary>
-    private readonly Dictionary<string, string> _renamedProperties;
-    private readonly bool _ensureAllColumnsMapped;
-    private readonly IEnumerable<CommandLocale> _additionalCommands;
+    public InternalQueryContext Context { get; }
 
     public InternalQueryProvider(
         IDbConnection dbConnection,
         CommandDefinition commandDefinition,
-        Dictionary<string, string> renamedProperties,
-        bool ensureAllColumnsMapped,
-        Type model,
-        IEnumerable<CommandLocale> additionalCommands)
+        InternalQueryContext context)
     {
         _commandDefinition = commandDefinition;
         _dbConnection = dbConnection;
-        _renamedProperties = renamedProperties;
-        _ensureAllColumnsMapped = ensureAllColumnsMapped;
-        _model = model;
-        _additionalCommands = additionalCommands;
+        Context = context;
     }
 
     public IQueryable CreateQuery(Expression expression)
@@ -44,14 +34,9 @@ internal class InternalQueryProvider
         var query = new InternalQueryable<object>(
             dbConnection: _dbConnection,
             commandDefinition: _commandDefinition,
-            model: this._model,
             expression: expression,
-            renamedProperties: _renamedProperties)
-        {
-            EnsureAllColumnsMapped = _ensureAllColumnsMapped
-        };
-
-        query.AdditionalCommands.AddRange(_additionalCommands);
+            model: Context.Type,
+            context: Context);
 
         return query;
     }
@@ -61,14 +46,9 @@ internal class InternalQueryProvider
         var query = new InternalQueryable<TElement>(
             dbConnection: _dbConnection,
             commandDefinition: _commandDefinition,
-            model: this._model,
+            model: Context.Type,
             expression: expression,
-            renamedProperties: _renamedProperties)
-        {
-            EnsureAllColumnsMapped = _ensureAllColumnsMapped
-        };
-
-        query.AdditionalCommands.AddRange(_additionalCommands);
+            context: Context);
 
         return query;
     }
@@ -83,7 +63,7 @@ internal class InternalQueryProvider
         if (!tResultType.IsAssignableTo(typeof(IEnumerable)))
             throw new NotSupportedException("The 'TResult' needs to be an 'IEnumerable'.");
 
-        var resultType = this._model;
+        var resultType = Context.Type;
 
         var translator = ((IFromSqlQueryProvider)this).GenerateTranslator();
 
@@ -118,7 +98,7 @@ internal class InternalQueryProvider
         if (!typeof(TResult).IsAssignableTo(typeof(Task)))
             throw new NotSupportedException("It's required a 'Task' result.");
 
-        var resultType = this._model;
+        var resultType = Context.Type;
 
         var translator = ((IFromSqlQueryProvider)this).GenerateTranslator();
 
@@ -190,10 +170,7 @@ internal class InternalQueryProvider
 
     SimpleQueryTranslator IFromSqlQueryProvider.GenerateTranslator()
     {
-        return new SimpleQueryTranslator(_renamedProperties, _ensureAllColumnsMapped, _additionalCommands)
-        {
-            ModelType = _model,
-        };
+        return new SimpleQueryTranslator(Context);
     }
 
     /// <summary>

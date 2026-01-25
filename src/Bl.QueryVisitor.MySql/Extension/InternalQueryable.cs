@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Config;
 using Bl.QueryVisitor.Visitors;
 using Dapper;
 using System.Collections;
@@ -10,42 +11,31 @@ using System.Reflection;
 namespace Bl.QueryVisitor.Extension;
 
 internal class InternalQueryable<TEntity>
-    : IFromSqlQueryable<TEntity>
+    : IFromSqlQueryable<TEntity>,
+    IQueryContextProvider
 {
     /// <summary>
     /// Provider that improves the expressions changes after execution.
     /// </summary>
-    private InternalQueryProvider _provider => new(_dbConnection, _commandDefinition, RenamedProperties, EnsureAllColumnsMapped, _model, AdditionalCommands);
+    private InternalQueryProvider _provider => new(_dbConnection, _commandDefinition, Context);
     private readonly Expression _expression;
     private readonly IDbConnection _dbConnection;
     private readonly CommandDefinition _commandDefinition;
-    private readonly Type _model;
 
-    public readonly List<CommandLocale> AdditionalCommands = new List<CommandLocale>();
-    public Type ModelType => _model;
-
-    /// <summary>
-    /// These items are used to replace the 'Property.Name', because it can improve by using index 
-    /// </summary>
-    public readonly Dictionary<string, string> RenamedProperties;
-
-    /// <summary>
-    /// This flag marks that the <see cref="RenamedProperties"/> should have all the class properties to the query.
-    /// </summary>
-    public bool EnsureAllColumnsMapped = false;
+    public InternalQueryContext Context { get; }
+    public Type ModelType => Context.Type;
 
     public InternalQueryable(
         IDbConnection dbConnection,
         CommandDefinition commandDefinition,
         Type model,
         Expression? expression = null,
-        Dictionary<string, string>? renamedProperties = null)
+        InternalQueryContext? context = null)
     {
         _dbConnection = dbConnection;
         _commandDefinition = commandDefinition;
-        RenamedProperties = renamedProperties ?? new();
+        Context = context ?? new(model);
         _expression = expression ?? Expression.Constant(this);
-        _model = model;
     }
 
     public Type ElementType => typeof(TEntity);
