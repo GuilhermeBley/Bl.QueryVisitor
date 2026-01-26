@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Config;
 using Dapper;
 using System.Data;
 using System.Linq.Expressions;
@@ -70,10 +71,10 @@ public static partial class FromSqlExtension
     public static IQueryable<TEntity> EnsureAllColumnSet<TEntity>(
         this IQueryable<TEntity> current)
     {
-        if (current is not InternalQueryable<TEntity> internalQuery) 
+        if (current is not IQueryContextProvider queryCtx) 
             return current;
 
-        internalQuery.EnsureAllColumnsMapped = true;
+        queryCtx.Context.EnsureAllColumnsMapped = true;
 
         return current;
     }
@@ -89,15 +90,31 @@ public static partial class FromSqlExtension
         this IQueryable<TEntity> current,
         Expression<Func<TEntity, TIn>> property,
         string columnName)
+        => SetColumnName(current, property, columnName, hidden: false);
+
+    /// <summary>
+    /// Add direct columns related to object properties or fields.
+    /// </summary>
+    /// <remarks>
+    ///     <para>Useful in performance scenarios, as long as the <paramref name="columnName"/> could be the direct table column.</para>
+    ///     <para>The property name will be changed to the column name in the MYSQL query.</para>
+    /// </remarks>
+    public static IQueryable<TEntity> SetColumnName<TEntity, TIn>(
+        this IQueryable<TEntity> current,
+        Expression<Func<TEntity, TIn>> property,
+        string columnName,
+        bool hidden)
     {
-        if (current is InternalQueryable<TEntity> internalQueryable)
+        if (current is IQueryContextProvider ctxProvider)
         {
+            var ctx = ctxProvider.Context;
+
             var memberName = GetMemberName(property);
 
-            if (internalQueryable.RenamedProperties.ContainsKey(memberName))
-                internalQueryable.RenamedProperties.Remove(memberName);
+            if (ctx.RenamedProperties.ContainsKey(memberName))
+                ctx.RenamedProperties.Remove(memberName);
 
-            internalQueryable.RenamedProperties.Add(memberName, columnName);
+            ctx.RenamedProperties.Add(memberName, new(MemberName: memberName, ColumnName: columnName, hidden));
         }
         return current;
     }
@@ -125,9 +142,9 @@ public static partial class FromSqlExtension
         CommandLocaleRegion region, 
         string sql)
     {
-        if (current is InternalQueryable<TEntity> internalQueryable)
+        if (current is IQueryContextProvider contextProvider)
         {
-            internalQueryable.AdditionalCommands.Add(new(region, sql));
+            contextProvider.Context.AdditionalCommands.Add(new(region, sql));
         }
         return current;
     }

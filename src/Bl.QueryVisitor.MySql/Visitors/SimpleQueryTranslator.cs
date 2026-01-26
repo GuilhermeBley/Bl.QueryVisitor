@@ -1,4 +1,5 @@
 ﻿using Bl.QueryVisitor.MySql;
+using Bl.QueryVisitor.MySql.Config;
 using Bl.QueryVisitor.MySql.Providers;
 using Bl.QueryVisitor.MySql.Visitors;
 using System.Collections.Immutable;
@@ -29,7 +30,7 @@ public class SimpleQueryTranslator
     /// <summary>
     /// These items are used to replace the 'Property.Name', because it can improve by using index 
     /// </summary>
-    private readonly IReadOnlyDictionary<string, string> _renamedProperties;
+    private readonly IReadOnlyDictionary<string, InternalColumnConfig> _renamedProperties;
     private readonly bool _ensureAllColumnsMapped;
     private readonly ColumnNameProvider _columnNameProvider;
     private readonly IEnumerable<CommandLocale> _addionalCommands;
@@ -62,10 +63,24 @@ public class SimpleQueryTranslator
         bool ensureAllColumnsMapped,
         IEnumerable<CommandLocale> AddionalCommands)
     {
-        _renamedProperties = renamedPropertiesDictionary.ToImmutableDictionary();
-        _columnNameProvider = new QuotesColumnNameProvider(_renamedProperties);
+        _renamedProperties = renamedPropertiesDictionary
+            .ToDictionary(
+                x => x.Key,
+                x => new InternalColumnConfig(MemberName: x.Key, ColumnName: x.Value, Hidden: false))
+            .ToImmutableDictionary();
+        _columnNameProvider = new QuotesColumnNameProvider(renamedPropertiesDictionary);
         _ensureAllColumnsMapped = ensureAllColumnsMapped;
         _addionalCommands = AddionalCommands;
+    }
+
+    internal SimpleQueryTranslator(InternalQueryContext context)
+    {
+        _renamedProperties = context.RenamedProperties.ToImmutableDictionary();
+        _columnNameProvider = new QuotesColumnNameProvider(context
+            .RenamedProperties
+            .ToDictionary(x => x.Value.MemberName, x => x.Value.ColumnName));
+        _ensureAllColumnsMapped = context.EnsureAllColumnsMapped;
+        _addionalCommands = context.AdditionalCommands;
     }
 
     public SimpleQueryTranslatorResult Translate(Expression expression)
@@ -254,7 +269,9 @@ public class SimpleQueryTranslator
     {
         var columnsMapped =
             _selectVisitor.Columns.Count == 0
-            ? _renamedProperties.Keys
+            ? _renamedProperties
+                .Where(x => x.Value.Hidden is false)
+                .Select(x => x.Key)
             : _selectVisitor.Columns;
 
         var selectSql =
